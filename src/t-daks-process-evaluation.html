@@ -1,0 +1,90 @@
+<!--
+	Copyright (c) tetronik GmbH (https://tetronik.com)
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+-->
+
+
+<!-- DAKS process evaluation ############# -->
+<script type="text/javascript">
+	RED.nodes.registerType('t-daks process-evaluation', {
+		category: 'tetronik GmbH',
+		color: '#428b23',
+		paletteLabel: "Process Evaluation",
+		defaults: {
+            name: {value:""},
+            eventItem: {type:"t-daks event-id_definition", required: true},
+            confirmation: {value: false}
+        },
+        inputs: 1,
+		outputs:1,
+		icon:"font-awesome/fa-code-fork",
+		label:function() {
+			return this.name||"Process Evaluation";
+		}
+	});
+</script>
+
+<script type="text/x-red" data-template-name="t-daks process-evaluation">
+	<div class="form-row">
+		<label for="node-input-name"><i class="icon-tag"></i> Name</label>
+		<input type="text" id="node-input-name" placeholder="Name">
+	</div>
+	<div class="form-row">
+        <label for="node-input-eventItem"><i class="icon-tag"></i> Event-Definition</label>
+		<input type="text" id="node-input-eventItem" placeholder="Event-Definition">
+    </div>
+    <div class="form-row">
+        <label for="node-input-confirmation"><i class="icon-tag"></i> Has Confirmation</label>
+		<input type="checkbox" id="node-input-confirmation" placeholder="Has Confirmation">
+	</div>
+</script>
+
+<script type="text/x-red" data-help-name="t-daks process-evaluation">
+	<p>Extract the feedback from a process using the input interface and use it in the further parts of your flow. This way you can, for example, react differently to a successful broadcast than to a failed one.</p>
+	
+	<h3>Inputs</h3>
+	<dl class="message-properties">
+		<dt>* <span class="property-type">object</span></dt>
+		<dd>Process results from DAKS.</dd>
+	</dl>
+	
+	<h3>Outputs</h3>
+	<ol class="node-ports">
+		<dl class="message-properties">
+			<dt>endReason <span class="property-type">string</span></dt>
+			<dd>On group calls for every participant:<br>
+			<i>None, Off duty, Busy, No answer, Not reached, Wrong behaviour, Reached, Accepted, Rejected, Conversation, Positive, Negative, Positive Confirmed, Negative Confirmed</i></dd>
+			
+			<dt>state <span class="property-type">string</span></dt>
+			<dd>On single calls the current "call"-state:<rb>
+			<i>Queued, Processing, Completed</i></dd>
+
+			<dt>result <span class="property-type">string</span></dt>
+			<dd>Summarized end result for the call:<br>
+			<i>None, Off duty, Busy, No answer, Not reached, Wrong behaviour, Reached, Accepted, Rejected, Conversation, Positive, Negative, Positive Confirmed, Negative Confirmed</i></dd>
+
+			<dt>payload <span class="property-type">string</span></dt>
+			<dd>On check box "Has Confirmation" set, you get an "analysed" result of your confirmation:<br>
+			<i>Confirmed</i> (if the sum answer is positive, depends on DAKS configuration),<br>
+			<i>Denied</i> (if the sum answer is negative, depends on DAKS configuration),<br>
+			<i>ERR</i> (if there is an error during analysis, happens on "no"-answer or not implemented answer, please check then <code>msg.result</code>)</dd>
+		</dl>
+	</ol>
+	
+	<h3>Details</h3>
+	<p>
+		Use this node to analyse and work with the call confirmations from single- or group-call processes.<br>
+		The main purpose is, to generalise the answers of the different process and answer types to "general" answers for an easier workflow.
+	</p>
+</script>

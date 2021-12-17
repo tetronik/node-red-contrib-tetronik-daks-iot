@@ -1,0 +1,163 @@
+<!--
+	Copyright (c) tetronik GmbH (https://tetronik.com)
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+-->
+
+
+<!-- String to Array w/ Filter ############# -->
+<script type="text/javascript">
+	RED.nodes.registerType('t-misc string-to-array-filter', {
+		category: 'tetronik GmbH',
+		color: '#ffd000',
+		paletteLabel: "String to Array w/ Filter",
+		defaults: {
+			name: {value:""},
+			skipUntilLetter: {value:false, required:true},
+			label: {value:[{value: '', separator: ''}]},
+		},
+        inputs:1,
+        outputs:1,
+		icon:"font-awesome/fa-filter",
+		label:function() {
+			return this.name||"String to Array w/ Filter";
+		},
+
+		oneditprepare: function() {
+			function generateLabel(i, label) {
+				var container = $('<li/>', {style:"background: #fff; margin:0; padding:8px 0px 0px; border-bottom: 1px solid #ccc;"});
+				var row = $('<div/>').appendTo(container);
+				var row2 = $('<div/>', {style:"padding-top:5px; padding-left:175px;"}).appendTo(container);
+				var row3 = $('<div/>', {style:"padding-top:5px; padding-left:125px;"}).appendTo(container);
+
+				$('<i style="color:#eee; cursor:move; margin-left:3px;" class="node-input-label-handle fa fa-bars"></i>').appendTo(row);
+				
+				var valueFieldA = $('<input/>', {class:"node-input-label-value", type:"text", style:"margin-left:7px; width:calc(55% - 60px);", placeholder:'Label', value:label.value, maxlength:20, pattern:'^[A-Za-z0-9_]{1}[A-Za-z0-9_\-]*$'}).appendTo(row);
+				var valueFieldB = $('<input/>', {class:"node-input-label-separator", type:"text", style:"margin-left:7px; width:calc(55% - 60px);", placeholder:'Separator', value:label.separator}).appendTo(row);
+
+				var finalspan = $('<span/>', {style:"float:right; margin-right: 8px;"}).appendTo(row);
+				var deleteButton = $('<a/>', {href:"#", class:"editor-button editor-button-small", style:"margin-top: 7px; margin-left: 5px;"}).appendTo(finalspan);
+				$('<i/>', {class:"fa fa-remove"}).appendTo(deleteButton);
+
+				deleteButton.click(function() {
+					container.css({"background":"#fee"});
+					container.fadeOut(300, function() {
+						$(this).remove();
+					});
+				});
+
+				$("#node-input-label-container").append(container);
+			}
+
+			$("#node-input-add-label").click(function() {
+					generateLabel($("#node-input-label-container").children().length+1, {});
+					$("#node-input-label-container-div").scrollTop($("#node-input-label-container-div").get(0).scrollHeight);
+			});
+
+			for(var i=0; i<this.label.length; i++) {
+				var tmpLabel = this.label[i];
+				generateLabel(i+1,tmpLabel);
+			}
+
+			$("#node-input-label-container").sortable({
+				axis: "y",
+				handle: ".node-input-label-handle",
+				cursor: "move"
+			});
+		},
+		oneditsave: function() {
+			var labels = $("#node-input-label-container").children();
+			var node = this;
+			node.label = [];
+			labels.each(function(i) {
+				var tmp = $(this);
+				var o = {
+					value: tmp.find(".node-input-label-value").val(),
+					separator: tmp.find(".node-input-label-separator").val(),
+				};
+				node.label.push(o);
+			});
+		}
+	});
+</script>
+
+<script type="text/x-red" data-template-name="t-misc string-to-array-filter">
+	<div class="form-row">
+		<label for="node-input-name"><i class="icon-tag"></i> Name</label>
+		<input type="text" id="node-input-name" placeholder="Name">
+	</div>
+	<div class="form-row">
+		<label for="node-input-skipUntilLetter"><i class="icon-tag"></i> Skip repeated separators</label>
+		<input type="checkbox" id="node-input-skipUntilLetter">
+	</div>
+	
+	<div class="form-row node-input-label-container-row" style="margin-bottom: 0px;width: 100%">
+        <label for="node-input-width" style="vertical-align:top"><i class="fa fa-list-alt"></i> String-Items</label>
+        <div id="node-input-label-container-div" style="box-sizing: border-box; border-radius: 5px; height: 257px; padding: 5px; border: 1px solid #ccc; overflow-y:scroll;display: inline-block; width: calc(70% + 15px);">
+            <ol id="node-input-label-container" style=" list-style-type:none; margin: 0;"></ol>
+        </div>
+    </div>
+    <div class="form-row">
+        <a href="#" class="editor-button editor-button-small" id="node-input-add-label" style="margin-top: 4px; margin-left: 103px;"><i class="fa fa-plus"></i> <span>add Item</span></a>
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="t-misc string-to-array-filter">
+	<p>Divide a string into multiple custom-labelled parts by custom entered separators.</p>
+	
+	<h3>Inputs</h3>
+	<dl class="message-properties">
+		<dt>payload <span class="property-type">string</span></dt>
+		<dd>the string, that needs to be split</dd>
+		
+		<dt>* <span class="property-type">string | object</span></dt>
+		<dd>The rest of the received object.</dd>
+	</dl>
+	
+	<h3>Outputs</h3>
+	<ol class="node-ports">
+		<dl class="message-properties">
+			<dt>payload <span class="property-type">string | buffer</span></dt>
+			<dd>the original string</dd>
+
+			<dt>split[<i>&lt;&lt;label&gt;&gt;</i>] <span class="property-type">string</span></dt>
+			<dd>array of split string items</dd>
+			
+			<dt>* <span class="property-type">string | object</span></dt>
+			<dd>The rest of the received object.</dd>
+		</dl>
+	</ol>
+	
+	<h3>Details</h3>
+	<p>Split up your string in <code>msg.payload</code> by separating it with customized separators between every object into a custom variable array.</p>
+	<p>Just add as many String-Items to the list, as you have in your string. Then label each string-item (0-9a-zA-Z) and set a separator.
+	<br>The last separator should not be entered because it will also not be used by the node.
+	<br>Only enter one separator per field. If you except a string to send multiple <b>same</b> separators between objects, check the checkbox "Skip repeated separators".</p>
+	<p>The order of the string to this list is: Left to Right equals Top to Bottom.</p>
+	<p>The 'label' is limited to a maximum length of 20 characters and allows only the following input: <b>A-Z</b>, <b>a-z</b>, <b>0-9</b>, '<b>_</b>', '<b>-</b>' <i>(the dash ['-'] is not allowed as first character)</i></p>
+
+	<h3>Special Chars</h3>
+	<p>Separators, like a single "space", are easy to enter. But if you have special control characters, then you need to enter some special codes.
+	<br>The following special characters are supported with this version:</p>
+	<ul>
+		<li><b>\0</b> (ASCII-Code: 0x00)</li>
+		<li><b>\a</b> (ASCII-Code: 0x07)</li>
+		<li><b>\b</b> (ASCII-Code: 0x08)</li>
+		<li><b>\t</b> (ASCII-Code: 0x09)</li>
+		<li><b>\n</b> (ASCII-Code: 0x0A)</li>
+		<li><b>\v</b> (ASCII-Code: 0x0B)</li>
+		<li><b>\f</b> (ASCII-Code: 0x0C)</li>
+		<li><b>\r</b> (ASCII-Code: 0x0D)</li>
+		<li><b>\e</b> (ASCII-Code: 0x1B)</li>
+	</ul>
+</script>

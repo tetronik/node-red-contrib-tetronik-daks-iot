@@ -1,0 +1,50 @@
+{
+	"name" : "node-red-contrib-tetronik-daks-iot",
+	"private" : false,
+	"author" : "tetronik GmbH",
+	"version" : "0.9.0-beta",
+	"description" : "Send signals from various systems to the highly available DAKS alarm server to trigger automated communication processes.",
+	"license" : "Apache-2.0",
+	"contributors" : [{
+		"name" : "tetronik GmbH",
+		"email" : "opensource@tetronik.com",
+		"url" : "https://tetronik.com/"
+	}],
+	"homepage" : "https://github.com/tetronik/node-red-contrib-tetronik-daks-iot",
+	"repository" : {
+		"type" : "git",
+		"url" : "https://github.com/tetronik/node-red-contrib-tetronik-daks-iot.git"
+	},
+	"bugs" : "https://github.com/tetronik/node-red-contrib-tetronik-daks-iot/issues",
+	"engine" : ">=10",
+	"keywords": [
+		"node-red", "tetronik", "daks",
+		"espa", "espax", "espa-x",
+		"iot", "alarm", "conferencing",
+		"pager", "paging", "inform", "daks-iot"
+	],
+	"dependencies": {
+		"cron": "^1.7.2",
+		"uniqid": "^5.0.3",
+		"xml2js": "^0.4.22"
+    },
+	"bundledDependencies": [
+		"cron",
+		"uniqid",
+		"xml2js"
+	],
+	"node-red": {
+		"nodes": {
+			"t-daks log":"src/t-daks-log.js",
+			"t-daks log-input":"src/t-daks-log-input.js",
+			"t-daks log-connector":"src/t-daks-log-connector.js",
+			"t-daks espax":"src/t-daks-espax.js",
+			"t-daks espax-server":"src/t-daks-espax-server.js",
+			"t-daks espax process-init":"src/t-daks-espax-pinit.js",
+			"t-daks process-evaluation":"src/t-daks-process-evaluation.js",
+			"t-daks event-id_start":"src/t-daks-event-id_start.js",
+			"t-daks event-id_definition":"src/t-daks-event-id_definition.js",
+			"t-misc string-to-array-filter":"src/t-misc-string-to-array-filter.js"
+		}
+	}
+}

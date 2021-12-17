@@ -1,0 +1,159 @@
+<!--
+	Copyright (c) tetronik GmbH (https://tetronik.com)
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+-->
+
+
+<!-- Log-Data to tetronik-Logging ############# -->
+<script type="text/javascript">
+	RED.nodes.registerType('t-daks log-input', {
+		category: 'tetronik GmbH',
+		color: '#f1666e',
+		paletteLabel: "Custom Central Logging Input",
+		defaults: {
+            name: {value:""},
+			log: {type:"t-daks log-connector",required:true},
+			
+			message: {value:""},
+			level: {value:"INFO"},
+			location: {value: ""},
+
+			message_S: {value:"t"},
+			level_S: {value:"t"},
+			location_S: {value:"t"}
+		},
+		inputs:1,
+		align: "right",
+		icon:"font-awesome/fa-arrow-circle-right",
+		label:function() {
+			return this.name||"Custom Central Logging Input";
+		},
+
+		oneditprepare: function() {
+			var that = this;
+			
+			$("#node-input-message_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-message").disabled = false;
+					document.getElementById("node-input-message").placeholder = "Log-Message";
+				} else {
+					document.getElementById("node-input-message").disabled = true;
+					document.getElementById("node-input-message").value = "";
+					document.getElementById("node-input-message").placeholder = "msg.payload";
+				}
+			});
+
+			$("#node-input-level_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-level").disabled = false;
+					document.getElementById("node-input-level").value = that.level || "INFO";
+				} else {
+					document.getElementById("node-input-level").disabled = true;
+					document.getElementById("node-input-level").value = "msg.level";
+				}
+			});
+
+			$("#node-input-location_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-location").disabled = false;
+					document.getElementById("node-input-location").placeholder = "Log-Location";
+				} else {
+					document.getElementById("node-input-location").disabled = true;
+					document.getElementById("node-input-location").value = "";
+					document.getElementById("node-input-location").placeholder = "msg.location";
+				}
+			});
+
+		}
+	});
+</script>
+
+<script type="text/x-red" data-template-name="t-daks log-input">
+	<div class="form-row">
+		<label for="node-input-name"><i class="icon-tag"></i> Name</label>
+		<input type="text" id="node-input-name" placeholder="Name">
+	</div>
+	<div class="form-row">
+        <label for="node-input-log"><i class="icon-tag"></i> Connector</label>
+		<input type="text" id="node-input-log" placeholder="Logging-Connector">
+	</div>
+
+	<div class="form-row">
+		<label for="node-input-message"><i class="icon-tag"></i> Log-Message</label>
+		<select id="node-input-message_S" style="width: 17% !important;">
+			<option value="t" selected>Input &gt;&gt;</option>
+			<option value="msg">External</option>
+		</select>
+		<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-message" placeholder="Message">
+	</div>
+	<div class="form-row">
+		<label for="node-input-level"><i class="icon-file"></i> Log-Level</label>
+		<select id="node-input-level_S" style="width: 17% !important;">
+			<option value="t" selected>Input &gt;&gt;</option>
+			<option value="msg">External</option>
+		</select>
+		<select type="text" id="node-input-level" style="width:52% !important; margin-left: 2px;">
+			<option value="INFO" selected>INFO</option>
+			<option value="WARNING">WARNING</option>
+			<option value="ERROR">ERROR</option>
+			<option value="CRITICAL">CRITICAL</option>
+			<option value="ALARM">ALARM</option>
+			<option value="msg.level" style="display:none;" disabled>msg.level</option>
+		</select>
+	</div>
+	<div class="form-row">
+		<label for="node-input-location"><i class="icon-tag"></i> Log-Location</label>
+		<select id="node-input-location_S" style="width: 17% !important;">
+			<option value="t" selected>Input &gt;&gt;</option>
+			<option value="msg">External</option>
+		</select>
+		<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-location" placeholder="Location">
+	</div>
+</script>
+
+<script type="text/x-red" data-help-name="t-daks log-input">
+	<p>Collect log messages from nodes which are not part of the tetronik repository.</p>
+	
+	<h3>Inputs</h3>
+	<dl class="message-properties">
+		<dt>payload <span class="property-type">string</span></dt>
+		<dd>The message of the log.</dd>
+		
+		<dt>level <span class="property-type">string</span></dt>
+		<dd>The log level can be INFO, WARNING, ERROR, CRITICAL and ALARM.</dd>
+
+		<dt>location <span class="property-type">string</span></dt>
+		<dd>The location, where the log happened (i.e. node name).</dd>
+	</dl>
+	
+	<h3>Details</h3>
+	<p>
+		With this node you can send log messages to the "tetronik central logging system".
+		First you have to select or create a "Connector" to connect your log-input with a log-output node.
+		You do not have to create a new connector one for each node, instead you should try to reuse it if possible.
+	</p>
+	<p>
+		The node can be used in two ways: With pre-configured or variable logging.<br>
+		Vor the pre-configured logging, you just enter your parameters <code>message</code>, <code>level</code> and <code>location</code> in the node edit box.
+		If you prefer to be more flexible with your node, like getting messages from another node,
+		you can set the corresponding dropdown menu from <code>Input</code> to <code>Extern</code> and map your message to the input fields shown next to it.
+	</p>
+	<p>
+		The message from <code>msg.payload</code> and the <code>msg.location</code> will be directly passed through the output node.<br>
+		The <code>msg.level</code> on the other hand will be verified, if it is uppercase and the correct value, otherwise it will be set to the default value <code>INFO</code>.
+	</p>
+</script>

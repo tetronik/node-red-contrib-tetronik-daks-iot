@@ -1,0 +1,994 @@
+<!--
+	Copyright (c) tetronik GmbH (https://tetronik.com)
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+-->
+
+
+<!-- Prozess initalization and definition ############# -->
+<script type="text/javascript">
+	RED.nodes.registerType('t-daks espax process-init', {
+		category: 'tetronik GmbH',
+		color: '#428b23',
+		paletteLabel: "ESPA-X Process",
+		defaults: {
+			name: {value:""},
+			logging: {type:"t-daks log-connector",required:true},
+			action: {value:"start"},
+
+			/* start */
+			ptype: {value:"single"},
+			number: {value:""},
+			conntype: {value: ""},
+			calling_number: {value:""},
+			calling_name: {value:""},
+			message: {value:""},
+			ward: {value:""},
+			bed: {value:""},
+			signal: {value:"Standard"},
+			delay: {value:"0"},
+			attempts: {value:"1"},
+			callback: {value:"No"},
+			prio: {value:"Standard"},
+			pr_details: {value:"All"},
+			audio_id: {value:""},
+			max_age: {value:"1"},
+			ncifno: {value:""},
+			cbckno: {value:""},
+
+			confirmation: {value:"false"},
+			confirmation_key_0: {value:"None"},
+			confirmation_key_1: {value:"None"},
+			confirmation_key_2: {value:"None"},
+			confirmation_key_3: {value:"None"},
+			confirmation_key_4: {value:"None"},
+			confirmation_key_5: {value:"None"},
+			confirmation_key_6: {value:"None"},
+			confirmation_key_7: {value:"None"},
+			confirmation_key_8: {value:"None"},
+			confirmation_key_9: {value:"None"},
+
+			confirmation_label_0: {value:"None"},
+			confirmation_label_1: {value:"None"},
+			confirmation_label_2: {value:"None"},
+			confirmation_label_3: {value:"None"},
+			confirmation_label_4: {value:"None"},
+			confirmation_label_5: {value:"None"},
+			confirmation_label_6: {value:"None"},
+			confirmation_label_7: {value:"None"},
+			confirmation_label_8: {value:"None"},
+			confirmation_label_9: {value:"None"},
+
+			confirmation_ann: {value:"",validate: RED.validators.regex(/^(\s*|\d+)$/)},
+			confirmation_text: {value:""},
+
+			/* cmd */
+			cmd: {value:"stop"},
+				/* stop */
+				mask: {value:"All"},
+				/* logout */
+				reason: {value:"Normal"},
+				/* condition */
+
+			/* message input type */
+			ptype_S: {value:"t"},
+			number_S: {value:"t"},
+			conntype_S: {value:"t"},
+			calling_number_S: {value:"t"},
+			calling_name_S: {value:"t"},
+			message_S: {value:"t"},
+			ward_S: {value:"t"},
+			bed_S: {value:"t"},
+			signal_S: {value:"t"},
+			delay_S: {value:"t"},
+			attempts_S: {value:"t"},
+			callback_S: {value:"t"},
+			prio_S: {value:"t"},
+			audio_id_S: {value:"t"},
+			max_age_S: {value:"t"},
+			ncifno_S: {value:"t"},
+			cbckno_S: {value:"t"},
+			confirmation_S: {value:"t"},
+			mask_S: {value:"t"},
+			reason_S: {value:"t"}
+			
+
+		},
+        inputs:1,
+        outputs:1,
+		icon:"font-awesome/fa-cogs",
+		label:function() {
+			return this.name||("ESPA-X Process-" + this.action[0].toUpperCase() + this.action.slice(1));
+		},
+
+		oneditprepare: function() {
+			var that = this;
+
+			$("#node-input-action").change(function() {
+				var val = $(this).val();
+				if(val === "start") {
+					$("#process_start_container").show();
+					$("#process_stop_container").hide();
+					$("#process_logout_container").hide();
+					$("#process_condition_container").hide();
+
+					changeConfirmation(false, that);
+
+					document.getElementById("node-input-ptype").required = true;
+					document.getElementById("node-input-number").required = true;
+					document.getElementById("node-input-delay").required = true;
+					document.getElementById("node-input-attempts").required = true;
+					document.getElementById("node-input-max_age").required = true;
+					document.getElementById("node-input-reason").required = false;
+				} else if(val === "stop"){
+					$("#process_start_container").hide();
+					$("#process_stop_container").show();
+					$("#process_logout_container").hide();
+					$("#process_condition_container").hide();
+
+					changeConfirmation(false, that);
+
+					document.getElementById("node-input-ptype").required = false;
+					document.getElementById("node-input-number").required = false;
+					document.getElementById("node-input-delay").required = false;
+					document.getElementById("node-input-attempts").required = false;
+					document.getElementById("node-input-max_age").required = false;
+					document.getElementById("node-input-reason").required = false;
+				} else if(val === "logout"){
+					$("#process_start_container").hide();
+					$("#process_stop_container").hide();
+					$("#process_logout_container").show();
+					$("#process_condition_container").hide();
+
+					changeConfirmation(false, that);
+
+					document.getElementById("node-input-ptype").required = false;
+					document.getElementById("node-input-number").required = false;
+					document.getElementById("node-input-delay").required = false;
+					document.getElementById("node-input-attempts").required = false;
+					document.getElementById("node-input-max_age").required = false;
+					document.getElementById("node-input-reason").required = true;
+				} else if(val === "condition"){
+					$("#process_start_container").hide();
+					$("#process_stop_container").hide();
+					$("#process_logout_container").hide();
+					$("#process_condition_container").show();
+					
+					changeConfirmation(false, that);
+
+					document.getElementById("node-input-ptype").required = false;
+					document.getElementById("node-input-number").required = false;
+					document.getElementById("node-input-delay").required = false;
+					document.getElementById("node-input-attempts").required = false;
+					document.getElementById("node-input-max_age").required = false;
+					document.getElementById("node-input-reason").required = false;
+				}
+
+			});
+
+			$("#node-input-confirmation").change(function() {
+				var val = $(this).val();
+				if(val === "true") {
+					changeConfirmation(true, that);
+				} else {
+					changeConfirmation(false, that);
+				}
+			});
+
+			$("#node-input-ptype").change(function() {
+				var val = $(this).val();
+
+				var pattern = "";
+				var maxlength = "";
+				var placeholder = "";
+				var label = "";
+
+				if(val === "group") {
+					pattern="^[0-9]*$";
+					maxlength="12";
+					placeholder = "Group-ID";
+					label = "Group-ID";
+
+					document.getElementById("node-input-audio_id").required = false;
+					$("#conntype_container").hide();
+				} else if(val === "single") {
+					pattern="^[\\\\0-9+\\-()/*#,;.]*$";
+					maxlength="24";
+					placeholder = "Call-Number (user ID)";
+					label = "Call-Number";
+
+					document.getElementById("node-input-audio_id").required = true;
+					$("#conntype_container").show();
+				}
+
+				$("#node-input-number").attr('maxlength', maxlength);
+				$("#node-input-number").attr('pattern', pattern);
+				$("#node-input-number").attr('placeholder', placeholder);
+				document.getElementById("number-label").innerHTML = label;
+			});
+
+			$("#node-input-ptype_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-ptype").disabled = false;
+					document.getElementById("node-input-ptype").value = that.ptype || "single";
+				} else {
+					document.getElementById("node-input-ptype").disabled = true;
+					document.getElementById("node-input-ptype").value = "msg.ptype";
+				}
+			});
+
+			$("#node-input-number_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-number").disabled = false;
+					document.getElementById("node-input-number").placeholder = "Call-Number (user id)";
+				} else {
+					document.getElementById("node-input-number").disabled = true;
+					document.getElementById("node-input-number").value = "";
+					document.getElementById("node-input-number").placeholder = "msg.number";
+				}
+			});
+			
+			$("#node-input-conntype_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-conntype").disabled = false;
+					document.getElementById("node-input-conntype").placeholder = "Connection-Type";
+				} else {
+					document.getElementById("node-input-conntype").disabled = true;
+					document.getElementById("node-input-conntype").value = "";
+					document.getElementById("node-input-conntype").placeholder = "msg.conntype";
+				}
+			});
+
+			$("#node-input-calling_number_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-calling_number").disabled = false;
+					document.getElementById("node-input-calling_number").placeholder = "Caller-Number";
+				} else {
+					document.getElementById("node-input-calling_number").disabled = true;
+					document.getElementById("node-input-calling_number").value = "";
+					document.getElementById("node-input-calling_number").placeholder = "msg.calling_number";
+				}
+			});
+
+			$("#node-input-calling_name_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-calling_name").disabled = false;
+					document.getElementById("node-input-calling_name").placeholder = "Caller-Name";
+				} else {
+					document.getElementById("node-input-calling_name").disabled = true;
+					document.getElementById("node-input-calling_name").value = "";
+					document.getElementById("node-input-calling_name").placeholder = "msg.calling_name";
+				}
+			});
+
+			$("#node-input-message_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-message").disabled = false;
+					document.getElementById("node-input-message").placeholder = "Message";
+				} else {
+					document.getElementById("node-input-message").disabled = true;
+					document.getElementById("node-input-message").value = "";
+					document.getElementById("node-input-message").placeholder = "msg.message";
+				}
+			});
+
+			$("#node-input-ward_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-ward").disabled = false;
+					document.getElementById("node-input-ward").placeholder = "Ward";
+				} else {
+					document.getElementById("node-input-ward").disabled = true;
+					document.getElementById("node-input-ward").value = "";
+					document.getElementById("node-input-ward").placeholder = "msg.ward";
+				}
+			});
+
+			$("#node-input-bed_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-bed").disabled = false;
+					document.getElementById("node-input-bed").placeholder = "Bed";
+				} else {
+					document.getElementById("node-input-bed").disabled = true;
+					document.getElementById("node-input-bed").value = "";
+					document.getElementById("node-input-bed").placeholder = "msg.bed";
+				}
+			});
+
+			$("#node-input-signal_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-signal").disabled = false;
+					document.getElementById("node-input-signal").value = that.signal || "Standard";
+				} else {
+					document.getElementById("node-input-signal").disabled = true;
+					document.getElementById("node-input-signal").value = "msg.signal";
+				}
+			});
+
+			$("#node-input-delay_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-delay").disabled = false;
+					document.getElementById("node-input-delay").value = that.delay || "0";
+					document.getElementById("node-input-delay").placeholder = "Delay";
+				} else {
+					document.getElementById("node-input-delay").disabled = true;
+					document.getElementById("node-input-delay").value = "";
+					document.getElementById("node-input-delay").placeholder = "msg.delay";
+				}
+			});
+
+			$("#node-input-attempts_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-attempts").disabled = false;
+					document.getElementById("node-input-attempts").value = that.attempts || "1";
+					document.getElementById("node-input-attempts").placeholder = "Attempts";
+				} else {
+					document.getElementById("node-input-attempts").disabled = true;
+					document.getElementById("node-input-attempts").value = "";
+					document.getElementById("node-input-attempts").placeholder = "msg.attempts";
+				}
+			});
+
+			$("#node-input-callback_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-callback").disabled = false;
+					document.getElementById("node-input-callback").value = that.callback || "No";
+				} else {
+					document.getElementById("node-input-callback").disabled = true;
+					document.getElementById("node-input-callback").value = "msg.callback";
+				}
+			});
+
+			$("#node-input-prio_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-prio").disabled = false;
+					document.getElementById("node-input-prio").value = that.prio || "Standard";
+				} else {
+					document.getElementById("node-input-prio").disabled = true;
+					document.getElementById("node-input-prio").value = "msg.prio";
+				}
+			});
+
+			$("#node-input-audio_id_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-audio_id").disabled = false;
+					document.getElementById("node-input-audio_id").placeholder = "Audio-ID(s)";
+				} else {
+					document.getElementById("node-input-audio_id").disabled = true;
+					document.getElementById("node-input-audio_id").value = "";
+					document.getElementById("node-input-audio_id").placeholder = "msg.audio_id";
+				}
+			});
+
+			$("#node-input-max_age_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-max_age").disabled = false;
+					document.getElementById("node-input-max_age").value = that.max_age || "1";
+					document.getElementById("node-input-max_age").placeholder = "Maximum age for this item in the ESPA-X queue";
+				} else {
+					document.getElementById("node-input-max_age").disabled = true;
+					document.getElementById("node-input-max_age").value = "";
+					document.getElementById("node-input-max_age").placeholder = "msg.max_age";
+				}
+			});
+
+			$("#node-input-ncifno_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-ncifno").disabled = false;
+					document.getElementById("node-input-ncifno").placeholder = "ID of the callback interface";
+				} else {
+					document.getElementById("node-input-ncifno").disabled = true;
+					document.getElementById("node-input-ncifno").value = "";
+					document.getElementById("node-input-ncifno").placeholder = "msg.ncifno";
+				}
+			});
+
+			$("#node-input-cbckno_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-cbckno").disabled = false;
+					document.getElementById("node-input-cbckno").placeholder = "Callback number";
+				} else {
+					document.getElementById("node-input-cbckno").disabled = true;
+					document.getElementById("node-input-cbckno").value = "";
+					document.getElementById("node-input-cbckno").placeholder = "msg.cbckno";
+				}
+			});
+
+			$("#node-input-confirmation_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-confirmation").disabled = false;
+					document.getElementById("node-input-confirmation").value = that.confirmation || "false";
+				} else {
+					document.getElementById("node-input-confirmation").disabled = true;
+					document.getElementById("node-input-confirmation").value = "msg.confirmation.*";
+				}
+			});
+
+			$("#node-input-mask_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-mask").disabled = false;
+					document.getElementById("node-input-mask").value = that.mask || "All";
+				} else {
+					document.getElementById("node-input-mask").disabled = true;
+					document.getElementById("node-input-mask").value = "msg.mask";
+				}
+			});
+
+			$("#node-input-reason_S").change(function() {
+				var val = $(this).val();
+				if(val === "t") {
+					document.getElementById("node-input-reason").disabled = false;
+					document.getElementById("node-input-reason").value = that.reason || "Normal";
+				} else {
+					document.getElementById("node-input-reason").disabled = true;
+					document.getElementById("node-input-reason").value = "msg.reason";
+				}
+			});
+		}
+	});
+
+	function changeConfirmation(active, item) {
+		if(active) {
+			$("#confirmation_container").show();
+		} else {
+			$("#confirmation_container").hide();
+		}
+		document.getElementById("node-input-confirmation_key_0").required = active;
+		document.getElementById("node-input-confirmation_key_1").required = active;
+		document.getElementById("node-input-confirmation_key_2").required = active;
+		document.getElementById("node-input-confirmation_key_3").required = active;
+		document.getElementById("node-input-confirmation_key_4").required = active;
+		document.getElementById("node-input-confirmation_key_5").required = active;
+		document.getElementById("node-input-confirmation_key_6").required = active;
+		document.getElementById("node-input-confirmation_key_7").required = active;
+		document.getElementById("node-input-confirmation_key_8").required = active;
+		document.getElementById("node-input-confirmation_key_9").required = active;
+	}
+
+</script>
+
+<script type="text/x-red" data-template-name="t-daks espax process-init">
+	<div class="form-row">
+		<label for="node-input-name"><i class="icon-tag"></i> Name</label>
+		<input type="text" id="node-input-name" placeholder="Name">
+	</div>
+
+	<div class="form-row">
+        <label for="node-input-logging"><i class="icon-tag"></i> Log-Connector</label>
+		<input type="text" id="node-input-logging" placeholder="Log-Connector">
+	</div>
+
+	<div class="form-row">
+		<label for="node-input-action"><i class="icon-file"></i> Action</label>
+		<select type="text" id="node-input-action" style="width:70%">
+			<option value="start" selected>Start call process</option>
+			<option value="stop">Stop call process</option>
+			<option value="logout">Logout from ESPA-X server</option>
+			<!--<option value="condition" disabled>Get condition</option>-->
+		</select>
+	</div>
+	
+	<!-- Process Start -->
+	<div id="process_start_container" class="show">
+		<div class="form-row">
+			<label for="node-input-ptype"><i class="icon-file"></i> Process-Type</label>
+			<select id="node-input-ptype_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<select type="text" id="node-input-ptype" style="width: 52% !important; margin-left: 2px;" required>
+				<option value="single" selected>Single call</option>
+				<option value="group">Group call</option>
+				<option value="msg.ptype" style="display: none;" disabled>msg.ptype</option>
+			</select>
+		</div>
+		<div class="form-row">
+			<label for="node-input-number"><i class="icon-tag"></i> <span id="number-label">Call-Number</span></label>
+			<select id="node-input-number_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-number" placeholder="Call-Number (user id)" pattern="^[\\0-9+\-()/*#,;.]*$" maxlength="24" required>
+		</div>
+		<div class="form-row" id="conntype_container">
+			<label for="node-input-conntype"><i class="icon-tag"></i> <span id="conntype-label">Connection-Type</span></label>
+			<select id="node-input-conntype_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-conntype" placeholder="Connection-Type" maxlength="3">
+		</div>
+		<div class="form-row">
+			<label for="node-input-calling_number"><i class="icon-tag"></i> Caller-Number</label>
+			<select id="node-input-calling_number_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-calling_number" placeholder="Caller-Number" pattern="^[0-9*#]*$" maxlength="16">
+		</div>
+		<div class="form-row">
+			<label for="node-input-calling_name"><i class="icon-tag"></i> Caller-Name</label>
+			<select id="node-input-calling_name_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-calling_name" placeholder="Caller-Name" maxlength="24">
+		</div>
+		<div class="form-row">
+			<label for="node-input-message"><i class="icon-tag"></i> Message</label>
+			<select id="node-input-message_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-message" placeholder="Message" maxlength="250">
+		</div>
+		<div class="form-row">
+			<label for="node-input-ward"><i class="icon-tag"></i> Ward</label>
+			<select id="node-input-ward_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-ward" placeholder="Ward" maxlength="12">
+		</div>
+		<div class="form-row">
+			<label for="node-input-bed"><i class="icon-tag"></i> Bed</label>
+			<select id="node-input-bed_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-bed" placeholder="Bed" maxlength="12">
+		</div>
+		<div class="form-row">
+			<label for="node-input-signal"><i class="icon-file"></i> Signal</label>
+			<select id="node-input-signal_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<select type="text" id="node-input-signal" style="width:52% !important; margin-left: 2px;">
+				<option value="Standard" selected>Standard</option>
+				<option value="Urgent">Urgent</option>
+				<option value="Emergency">Emergency</option>
+				<!--<option value="Special">Special</option>-->
+				<option value="msg.signal" style="display:none;" disabled>msg.signal</option>
+			</select>
+		</div>
+		<div class="form-row">
+			<label for="node-input-delay"><i class="icon-tag"></i> Delay [s]</label>
+			<select id="node-input-delay_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="number" style="width: 52% !important; margin-left: 2px;" id="node-input-delay" min="0" max="65535" value="0" placeholder="Delay [s]" required>
+		</div>
+		<div class="form-row">
+			<label for="node-input-attempts"><i class="icon-tag"></i> Attempts</label>
+			<select id="node-input-attempts_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="number" style="width: 52% !important; margin-left: 2px;" id="node-input-attempts" min="0" max="65535" value="1" placeholder="Attempts" required>
+		</div>
+		<div class="form-row">
+			<label for="node-input-callback"><i class="icon-file"></i> Callback</label>
+			<select id="node-input-callback_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<select type="text" id="node-input-callback" style="width:52% !important; margin-left: 2px;">
+				<option value="No" selected>no callback</option>
+				<option value="NC-IF">callback to call-system interface, w.o. extra signal</option>
+				<option value="NC-IF-DTMF">callback to call-system interface, with DTMF signal</option>
+				<option value="NC-IF-DTHRU">callback to call-system interface, with dialthru</option>
+				<option value="NC-IF-PREP">callback to call-system interface, with connection done by call-system</option>
+				<option value="Phone">callback to phone</option>
+				<option value="Phone-VC">callback to phone, with direct speech</option>
+				<option value="msg.callback" style="display:none;" disabled>msg.callback</option>
+			</select>
+		</div>
+		<div class="form-row">
+			<label for="node-input-prio"><i class="icon-file"></i> Priority</label>
+			<select id="node-input-prio_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<select type="text" id="node-input-prio" style="width:52% !important; margin-left: 2px;">
+				<option value="Emergency">Emergency</option>
+				<option value="High">High</option>
+				<option value="Medium">Medium</option>
+				<option value="Standard" selected>Standard</option>
+				<option value="Low">Low</option>
+				<option value="msg.prio" style="display:none;" disabled>msg.prio</option>
+			</select>
+		</div>
+		<div class="form-row">
+			<label for="node-input-audio_id"><i class="icon-tag"></i> Audio-ID(s)<br>[optional]</label>
+			<select id="node-input-audio_id_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-audio_id" placeholder="Audio-ID(s)" pattern="^(\d{1,4})(([ ]\d{1,4}){0,15})$">
+		</div>
+		<div class="form-row">
+			<label for="node-input-max_age"><i class="icon-tag"></i> Maximum queuing age [min]</label>
+			<select id="node-input-max_age_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="number" style="width: 52% !important; margin-left: 2px;" id="node-input-max_age" min="1" max="1440" value="1" placeholder="Maximum age for this item in the ESPA-X queue" required>
+		</div>
+		<div class="form-row">
+			<label for="node-input-ncifno"><i class="icon-tag"></i> ID of the callback interface</label>
+			<select id="node-input-ncifno_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-ncifno" placeholder="ID of the callback interface" maxlength="24">
+		</div>
+		<div class="form-row">
+			<label for="node-input-cbckno"><i class="icon-tag"></i> Callback number</label>
+			<select id="node-input-cbckno_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<!--<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-cbckno" placeholder="Callback number" pattern="^[\\0-9+\-()/*#,;.]*$" maxlength="24">-->
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-cbckno" placeholder="Callback number" pattern="^[\\0-9+\-()/*#]*$" maxlength="24">
+		</div>
+
+		<div class="form-row">
+			<label for="node-input-confirmation"><i class="icon-tag"></i> Override DAKS-Confirmation</label>
+			<select id="node-input-confirmation_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<select type="text" id="node-input-confirmation" style="width:52% !important; margin-left: 2px;">
+				<option value="false" selected>Do not override</option>
+				<option value="true">Override DAKS settings</option>
+				<option value="msg.confirmation.*" style="display:none;" disabled>msg.confirmation.*</option>
+			</select>
+		</div>
+
+		<div id="confirmation_container" class="hide"><!--hide-->
+			<br>
+			<div class="form-row">
+				<label for="confirm_header" style="float: left;">&nbsp;</label>
+				<div id="confirm_header" style="float: left; width: 35%; margin-left: 10px;">
+					<b>Function</b>
+				</div>
+				<div style="float: left; width: 30%; margin-left: 4px;">
+					<b>Mobile labeling</b>
+				</div>
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_key_0"><i class="icon-tag"></i> Key 0</label>
+				<select id="node-input-confirmation_key_0" style="width:35%">
+					<option value="None" selected>None</option>
+					<option value="Positive">Positive</option>
+					<option value="Negative">Negative</option>
+					<option value="Wrong Person">Wrong Person</option>
+					<option value="Callback">Callback</option>
+					<option value="Positive+Time">Positive+Time</option>
+				</select>
+				<input type="text" style="width: 34% !important; margin-left: 2px;" id="node-input-confirmation_label_0" placeholder="None" maxlength="10">
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_key_1"><i class="icon-tag"></i> Key 1</label>
+				<select id="node-input-confirmation_key_1" style="width:35%">
+					<option value="None" selected>None</option>
+					<option value="Positive">Positive</option>
+					<option value="Negative">Negative</option>
+					<option value="Wrong Person">Wrong Person</option>
+					<option value="Callback">Callback</option>
+					<option value="Positive+Time">Positive+Time</option>
+				</select>
+				<input type="text" style="width: 34% !important; margin-left: 2px;" id="node-input-confirmation_label_1" placeholder="None" maxlength="10">
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_key_2"><i class="icon-tag"></i> Key 2</label>
+				<select id="node-input-confirmation_key_2" style="width:35%">
+					<option value="None" selected>None</option>
+					<option value="Positive">Positive</option>
+					<option value="Negative">Negative</option>
+					<option value="Wrong Person">Wrong Person</option>
+					<option value="Callback">Callback</option>
+					<option value="Positive+Time">Positive+Time</option>
+				</select>
+				<input type="text" style="width: 34% !important; margin-left: 2px;" id="node-input-confirmation_label_2" placeholder="None" maxlength="10">
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_key_3"><i class="icon-tag"></i> Key 3</label>
+				<select id="node-input-confirmation_key_3" style="width:35%">
+					<option value="None" selected>None</option>
+					<option value="Positive">Positive</option>
+					<option value="Negative">Negative</option>
+					<option value="Wrong Person">Wrong Person</option>
+					<option value="Callback">Callback</option>
+					<option value="Positive+Time">Positive+Time</option>
+				</select>
+				<input type="text" style="width: 34% !important; margin-left: 2px;" id="node-input-confirmation_label_3" placeholder="None" maxlength="10">
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_key_4"><i class="icon-tag"></i> Key 4</label>
+				<select id="node-input-confirmation_key_4" style="width:35%">
+					<option value="None" selected>None</option>
+					<option value="Positive">Positive</option>
+					<option value="Negative">Negative</option>
+					<option value="Wrong Person">Wrong Person</option>
+					<option value="Callback">Callback</option>
+					<option value="Positive+Time">Positive+Time</option>
+				</select>
+				<input type="text" style="width: 34% !important; margin-left: 2px;" id="node-input-confirmation_label_4" placeholder="None" maxlength="10">
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_key_5"><i class="icon-tag"></i> Key 5</label>
+				<select id="node-input-confirmation_key_5" style="width:35%">
+					<option value="None" selected>None</option>
+					<option value="Positive">Positive</option>
+					<option value="Negative">Negative</option>
+					<option value="Wrong Person">Wrong Person</option>
+					<option value="Callback">Callback</option>
+					<option value="Positive+Time">Positive+Time</option>
+				</select>
+				<input type="text" style="width: 34% !important; margin-left: 2px;" id="node-input-confirmation_label_5" placeholder="None" maxlength="10">
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_key_6"><i class="icon-tag"></i> Key 6</label>
+				<select id="node-input-confirmation_key_6" style="width:35%">
+					<option value="None" selected>None</option>
+					<option value="Positive">Positive</option>
+					<option value="Negative">Negative</option>
+					<option value="Wrong Person">Wrong Person</option>
+					<option value="Callback">Callback</option>
+					<option value="Positive+Time">Positive+Time</option>
+				</select>
+				<input type="text" style="width: 34% !important; margin-left: 2px;" id="node-input-confirmation_label_6" placeholder="None" maxlength="10">
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_key_7"><i class="icon-tag"></i> Key 7</label>
+				<select id="node-input-confirmation_key_7" style="width:35%">
+					<option value="None" selected>None</option>
+					<option value="Positive">Positive</option>
+					<option value="Negative">Negative</option>
+					<option value="Wrong Person">Wrong Person</option>
+					<option value="Callback">Callback</option>
+					<option value="Positive+Time">Positive+Time</option>
+				</select>
+				<input type="text" style="width: 34% !important; margin-left: 2px;" id="node-input-confirmation_label_7" placeholder="None" maxlength="10">
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_key_8"><i class="icon-tag"></i> Key 8</label>
+				<select id="node-input-confirmation_key_8" style="width:35%">
+					<option value="None" selected>None</option>
+					<option value="Positive">Positive</option>
+					<option value="Negative">Negative</option>
+					<option value="Wrong Person">Wrong Person</option>
+					<option value="Callback">Callback</option>
+					<option value="Positive+Time">Positive+Time</option>
+				</select>
+				<input type="text" style="width: 34% !important; margin-left: 2px;" id="node-input-confirmation_label_8" placeholder="None" maxlength="10">
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_key_9"><i class="icon-tag"></i> Key 9</label>
+				<select id="node-input-confirmation_key_9" style="width:35%">
+					<option value="None" selected>None</option>
+					<option value="Positive">Positive</option>
+					<option value="Negative">Negative</option>
+					<option value="Wrong Person">Wrong Person</option>
+					<option value="Callback">Callback</option>
+					<option value="Positive+Time">Positive+Time</option>
+				</select>
+				<input type="text" style="width: 34% !important; margin-left: 2px;" id="node-input-confirmation_label_9" placeholder="None" maxlength="10">
+			</div>
+			<br>
+			<div class="form-row">
+				<label for="node-input-confirmation_ann"><i class="icon-tag"></i> Confirmation Announcement</label>
+				<input type="text" id="node-input-confirmation_ann" pattern="[0-9]{0,4}" maxlength="4" placeholder="Confirmation Announcement">
+			</div>
+			<div class="form-row">
+				<label for="node-input-confirmation_text"><i class="icon-tag"></i> Confirmation display info</label>
+				<input type="text" id="node-input-confirmation_text" placeholder="Confirmation display info" maxlength="24">
+			</div>
+		</div>
+
+	</div>
+
+	<!-- Process Stop -->
+	<div id="process_stop_container" class="hide"><!--hide-->
+		<div class="form-row">
+			<label for="node-input-mask"><i class="icon-file"></i> Mask for process identification</label>
+			<select id="node-input-mask_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<select type="text" id="node-input-mask" style="width:52% !important; margin-left: 2px;">
+				<option value="Prepared">Prepared</option>
+				<option value="Queued">Queued</option>
+				<option value="Active">Active</option>
+				<option value="Conversation">Conversation</option>
+				<option value="Postprocessing">Postprocessing</option>
+				<option value="All" selected>All</option>
+				<option value="msg.mask" style="display:none;" disabled>msg.mask</option>
+			</select>
+		</div>
+	</div>
+
+	<!-- Process Logout -->
+	<div id="process_logout_container" class="hide"><!--hide-->
+		<div class="form-row">
+			<label for="node-input-reason"><i class="icon-file"></i> Logout reason</label>
+			<select id="node-input-reason_S" style="width: 17% !important;">
+				<option value="t" selected>Input &gt;&gt;</option>
+				<option value="msg">External</option>
+			</select>
+			<select type="text" id="node-input-reason" style="width:52% !important; margin-left: 2px;">
+				<option value="Normal" selected>Normal</option>
+				<option value="Service">Service</option>
+				<option value="Reboot">Reboot</option>
+				<option value="New data">New data</option>
+				<option value="System error">System error</option>
+				<option value="Requested">Requested</option>
+				<option value="Unspecified">Unspecified</option>
+				<option value="msg.reason" style="display:none;" disabled>msg.reason</option>
+			</select>
+		</div>
+	</div>
+
+	<!-- Process Condition -->
+	<div id="process_condition_container" class="hide"><!--hide-->
+		<!--<div class="form-row">
+			<label for="node-input-name"><i class="icon-tag"></i> Name</label>
+			<input type="text" id="node-input-name" placeholder="Name">
+		</div>-->
+	</div>
+
+</script>
+
+<script type="text/x-red" data-help-name="t-daks espax process-init">
+	<p>Define and customize an ESPA-X call process or do some simple ESPA-X "communication".</p>
+	
+	<h3>Inputs</h3>
+	<dl class="message-properties">
+		<dt>ptype <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Process type: "single"/"group"-call<br>
+			<b>Required</b></dd>
+		
+		<dt>number <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Number/ID to call.<br>
+			<i>Single specification: <code>0-9 +-\/()*#</code><br>
+			Group specification: <code>0-9</code></i><br>
+			<b>Required</b></dd>
+			
+		<dt>conntype <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Connection-Type of the call. Default interface if empty.<br>
+			<i>Single call: <i>optional</i><br>
+			Group call: not available</dd>
+
+		<dt>calling_number <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Number of the calling person.<br>
+		<i>Specification: <code>0-9 *#</code></i></dd>
+
+		<dt>calling_name <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Name of the calling person.<br>
+		<i>Specification: max. 24 characters</i></dd>
+
+		<dt>message <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Display message.<br>
+		<i>Specification: max. 250 characters</i></dd>
+
+		<dt>ward <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Ward description.<br>
+		<i>Specification: max. 12 characters</i></dd>
+
+		<dt>bed <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Bed description.<br>
+		<i>Specification: max. 12 characters</i></dd>
+
+		<dt>signal <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Call signaling. Possible values: <i>Standard, Urgent, Emergency</i></dd>
+
+		<dt>delay <span class="property-type">string | number</span></dt>
+		<dd><b>Start:</b> Delay between two call attempts.<br>
+		<i>Specification: 0-65535</i></dd>
+
+		<dt>attempts <span class="property-type">string | number</span></dt>
+		<dd><b>Start:</b> Number of call attempts.<br>
+		<i>Specification: 0-65535</i></dd>
+
+		<dt>callback <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Callback definition: <i>No, NC-IF, NC-IF-DTMF, NC-IF-DTHRU, NC-IF-PREP, Phone, Phone-VC</i><br>(see DAKS documentation for details)</dd>
+
+		<dt>prio <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Call priority: <i>Standard, Low, Medium, High, Emergency</i></dd>
+
+		<dt>audio_id <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Audio ID for call playback audio.<br>
+		<i>Specification: ID <code>0-9999</code>, multiple IDs possible, IDs are comma separated and a maximum of 16 IDs are allowed.</i><br>
+		<b>Required on single call.</b></dd>
+
+		<dt>max_age <span class="property-type">string | number</span></dt>
+		<dd><b>Start:</b> The maximum age of a inactive process in the queue.</dd>
+
+		<dt>ncifno <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> ID of the callback interface.<br>
+		<i>Specification: max. 24 characters</i></dd>
+
+		<dt>cbckno <span class="property-type">string</span></dt>
+		<dd><b>Start:</b> Callback number.<br>
+		<i>Specification: max. 24 characters, <code>0-9 +-\/()*#</code></i></dd>
+
+		<dt>confirmation.* <span class="property-type">object</span></dt>
+		<dd><b>Start:</b> Confirmation payload. Details at bottom.</dd>
+		
+		<br>
+		
+		<dt>mask <span class="property-type">string</span></dt>
+		<dd><b>Stop:</b> Mask for process identification: <i>Prepared, Queued, Active, Conversation, Postprocessing, All</i></dd>
+		
+		<br>
+		
+		<dt>reason <span class="property-type">string</span></dt>
+		<dd><b>Logout:</b> Logout reason: <i>Normal, Service, Reboot, New data, System error, Requested, Unspecified</i></dd>
+	</dl>
+	
+	<h3>Outputs</h3>
+	<ol class="node-ports">
+		<dl class="message-properties">
+			<dt>* <span class="property-type">object</span></dt>
+			<dd>ESPA-X process object.</dd>
+		</dl>
+	</ol>
+	
+	<h3>Details</h3>
+	<p>
+		Create a process object for the ESPA-X node. Just pre-select your action (start, stop, logout) and Log-Connector.<br>
+		If you only want to use this node for a specific process, you can configure all values directly in the nodes UI settings.<br>
+		But if you want to have some values variable, then you have to select for those values "External", to hand over the value with the shown object key.
+	</p>
+
+	<h3>Confirmation payload</h3>
+	<p>
+		<code>msg.confirmation.k[<i>0-9</i>]</code> <span class="property-type">string</span><br>
+		Define action for phone buttons 0-9.<br>
+		Possible values: <i>None, Positive, Negative, Wrong Person, Callback, Positive+Time</i>
+		<br><br>
+		<code>msg.confirmation.l[<i>0-9</i>]</code> <span class="property-type">string</span><br>
+		Define button label for moble devices (like DMC-Application).<br>
+		None or Empty values are not displayed.<br>
+		<i>Specification: max. 10 characters</i>
+		<br><br>
+		<code>msg.confirmation.ann</code> <span class="property-type">string | number</span><br>
+		Announcement audio ID.<br>
+		<i>Specification: <code>0-9999</code></i>
+		<br><br>
+		<code>msg.confirmation.text</code> <span class="property-type">string</span><br>
+		Confirmation display info text.<br>
+		<i>Specification: max. 24 characters</i>
+	</p>
+</script>

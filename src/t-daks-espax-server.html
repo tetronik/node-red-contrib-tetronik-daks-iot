@@ -1,0 +1,226 @@
+<!--
+	Copyright (c) tetronik GmbH (https://tetronik.com)
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+-->
+
+
+<!-- Global server configurations ############# -->
+<script type="text/javascript">
+	RED.nodes.registerType('t-daks espax-server', {
+		category: 'config',
+		defaults: {
+			name: {value: "Main-Connector"},
+			max_queuesize: {value: 1000, required: true, validate: RED.validators.regex(/^([1-9][0-9]{1,3}|10000)$/)},
+			queuesize_warning: {value: 80, required: true, validate: RED.validators.regex(/^([1-9][0-9]{1,2}|100)$/)},
+			logging: {type:"t-daks log-connector"},
+
+			name_main: {value:"Master",required:true},
+			host_main: {value:"127.0.0.1",required:true,validate: RED.validators.regex(/^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/)},
+			port_main: {value:2023,required:true,validate: RED.validators.regex(/^((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([0-5]{0,5})|([0-9]{1,4}))$/)},
+			usessl_main: {value: false},
+			validate_certificate_main: {value: false},
+			timeout_main: {value:30,required:true,validate: RED.validators.number()},
+			user_main: {value: "", required: true},
+			password_main: {value: "", required: true},
+			client_main: {value: "Node-RED", required: true},
+
+			have_slave: {value: "none", required:true},
+
+			name_slave: {value:"Slave"},
+			host_slave: {value:"127.0.0.1",validate: RED.validators.regex(/^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/)},
+			port_slave: {value:2023,validate: RED.validators.regex(/^((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([0-5]{0,5})|([0-9]{1,4}))$/)},
+			usessl_slave: {value: false},
+			validate_certificate_slave: {value: false},
+			timeout_slave: {value:30,validate: RED.validators.number()},
+			user_slave: {value: ""},
+			password_slave: {value: ""},
+			client_slave: {value: "Client"},
+		},
+		label: function() {
+            return this.name || "Main-Connector";
+		},
+		exportable: false,
+
+		oneditprepare: function() {
+			$("#node-config-input-have_slave").change(function() {
+				var val = $(this).val();
+				if(val === "slave") {
+					$("#node-row-slave").show();
+					document.getElementById("node-config-input-name_slave").required = true;
+					document.getElementById("node-config-input-host_slave").required = true;
+					document.getElementById("node-config-input-port_slave").required = true;
+					document.getElementById("node-config-input-user_slave").required = true;
+					document.getElementById("node-config-input-password_slave").required = true;
+					document.getElementById("node-config-input-client_slave").required = true;
+					document.getElementById("node-config-input-timeout_slave").required = true;
+				} else {
+					$("#node-row-slave").hide();
+					document.getElementById("node-config-input-name_slave").required = false;
+					document.getElementById("node-config-input-host_slave").required = false;
+					document.getElementById("node-config-input-port_slave").required = false;
+					document.getElementById("node-config-input-user_slave").required = false;
+					document.getElementById("node-config-input-password_slave").required = false;
+					document.getElementById("node-config-input-client_slave").required = false;
+					document.getElementById("node-config-input-timeout_slave").required = false;
+
+					document.getElementById("node-config-input-name_slave").value = "";
+					document.getElementById("node-config-input-host_slave").value = "127.0.0.1";
+					document.getElementById("node-config-input-port_slave").value = 2023;
+					document.getElementById("node-config-input-user_slave").value = "";
+					document.getElementById("node-config-input-password_slave").value = "";
+					document.getElementById("node-config-input-client_slave").value = "Client";
+					document.getElementById("node-config-input-timeout_slave").value = 30;
+				}
+			});
+
+			$("#node-config-input-usessl_main").change(function() {
+				document.getElementById("node-config-input-validate_certificate_main").disabled = !document.getElementById("node-config-input-usessl_main").checked;
+			});
+
+			$("#node-config-input-usessl_slave").change(function() {
+				document.getElementById("node-config-input-validate_certificate_slave").disabled = !document.getElementById("node-config-input-usessl_slave").checked;
+			});
+		}
+	});
+</script>
+
+<script type="text/x-red" data-template-name="t-daks espax-server">
+	<div class="form-row">
+		<label for="node-config-input-name"><i class="icon-file"></i> Connector-Name</label>
+		<input type="text" id="node-config-input-name">
+	</div>
+
+	<div class="form-row">
+		<label for="node-config-input-max_queuesize"><i class="icon-file"></i> Max queue size</label>
+		<input type="number" id="node-config-input-max_queuesize" min="10" max="10000" title="range: 10 - 10000">
+	</div>
+	<div class="form-row">
+		<label for="node-config-input-queuesize_warning"><i class="icon-file"></i> Queue warning level [in %]</label>
+		<input type="number" id="node-config-input-queuesize_warning" min="10" max="100" title="range: 10 - 100">
+	</div>
+	<div class="form-row">
+		<label for="node-config-input-logging"><i class="icon-file"></i> Log-Connector</label>
+		<input type="text" id="node-config-input-logging">
+	</div>
+	
+	<h3>Master-Server</h3>
+	<div class="form-row">
+		<label for="node-config-input-name_main"><i class="icon-file"></i> Server name</label>
+		<input type="text" id="node-config-input-name_main">
+    </div>
+    <div class="form-row">
+		<label for="node-config-input-host_main"><i class="icon-file"></i> Server IP</label>
+		<input type="text" id="node-config-input-host_main">
+    </div>
+    <div class="form-row">
+		<label for="node-config-input-port_main"><i class="icon-file"></i> Server port</label>
+		<input type="number" id="node-config-input-port_main" min="0" max="65535" title="port range: 0 - 65535">
+	</div>
+	<div class="form-row">
+        <label for="node-config-input-usessl_main"><i class="icon-tag"></i> Use SSL/TLS</label>
+		<input type="checkbox" id="node-config-input-usessl_main">
+	</div>
+	<div class="form-row">
+        <label for="node-config-input-validate_certificate_main"><i class="icon-tag"></i> Verify Certificate</label>
+		<input type="checkbox" id="node-config-input-validate_certificate_main">
+	</div>
+	<div class="form-row">
+		<label for="node-config-input-user_main"><i class="icon-file"></i> Username</label>
+		<input type="text" id="node-config-input-user_main" minlength="1" maxlength="12">
+    </div>
+	<div class="form-row">
+		<label for="node-config-input-password_main"><i class="icon-file"></i> Password</label>
+		<input type="password" id="node-config-input-password_main" maxlength="12">
+	</div>
+	<div class="form-row">
+		<label for="node-config-input-client_main"><i class="icon-file"></i> Clientname</label>
+		<input type="text" id="node-config-input-client_main" minlength="1" maxlength="30">
+	</div>
+    <div class="form-row">
+		<label for="node-config-input-timeout_main"><i class="icon-file"></i> Timeout / Heartbeat [s]</label>
+		<input type="number" id="node-config-input-timeout_main" min="1" max="299" title="range: 1 - 299" placholder="Smaller than timeout in DAKS!">
+	</div>
+
+	<h3>Slave-Server</h3>
+	<div class="form-row">
+		<label for="node-config-input-have_slave"><i class="icon-file"></i> Use Slave</label>
+		<select type="text" id="node-config-input-have_slave" style="width:70%">
+			<option value="none">No slave server</option>
+			<option value="slave">Use slave server</option>
+		</select>
+	</div>
+	<div class="form-row">
+		<div id="node-row-slave" class="hide">
+			<div class="form-row">
+				<label for="node-config-input-name_slave"><i class="icon-file"></i> Server name</label>
+				<input type="text" id="node-config-input-name_slave">
+    		</div>
+    		<div class="form-row">
+				<label for="node-config-input-host_slave"><i class="icon-file"></i> Server IP</label>
+				<input type="text" id="node-config-input-host_slave">
+    		</div>
+    		<div class="form-row">
+				<label for="node-config-input-port_slave"><i class="icon-file"></i> Server port</label>
+				<input type="number" id="node-config-input-port_slave" min="0" max="65535" title="port range: 0 - 65535">
+			</div>
+			<div class="form-row">
+				<label for="node-config-input-usessl_slave"><i class="icon-tag"></i> Use SSL/TLS</label>
+				<input type="checkbox" id="node-config-input-usessl_slave">
+			</div>
+			<div class="form-row">
+				<label for="node-config-input-validate_certificate_slave"><i class="icon-tag"></i> Verify Certificate</label>
+				<input type="checkbox" id="node-config-input-validate_certificate_slave">
+			</div>
+			<div class="form-row">
+				<label for="node-config-input-user_slave"><i class="icon-file"></i> Username</label>
+				<input type="text" id="node-config-input-user_slave" minlength="1" maxlength="12">
+    		</div>
+			<div class="form-row">
+				<label for="node-config-input-password_slave"><i class="icon-file"></i> Password</label>
+				<input type="password" id="node-config-input-password_slave" maxlength="12">
+			</div>
+			<div class="form-row">
+				<label for="node-config-input-client_slave"><i class="icon-file"></i> Clientname</label>
+				<input type="text" id="node-config-input-client_slave" minlength="1" maxlength="30">
+			</div>
+    		<div class="form-row">
+				<label for="node-config-input-timeout_slave"><i class="icon-file"></i> Timeout / Heartbeat [s]</label>
+				<input type="number" id="node-config-input-timeout_slave" min="1" max="299" title="range: 1 - 299" placholder="Smaller than timeout in DAKS!">
+			</div>
+		</div>
+	</div>
+	
+</script>
+
+<script type="text/x-red" data-help-name="t-daks espax-server">
+	<p>Connect to one DAKS server (or two for redundancy) via ESPA-X to start processes.</p>
+	
+	<h3>Details</h3>
+	<p>
+		To connect to a DAKS, you simply just need your DAKS's IP address and port, login credentials, the timeout value (should be lower than set in the DAKS) and the Log-Connector.<br>
+		After that, you can modify the pre-configured values, like queue-size and queue warning level.<br>
+		<b>Note:</b> <i>The queue size should not be too big, otherwise later initiated important processes could be "lost" because the DAKS will start/get those processes to late.<br>
+		Please contact support for more information.</i
+	</p>
+	<p>
+		If you want to use the ESPA-X SSL-mode, then enter the SSL port and check the box "Use SSL/TLS".<br>
+		The default DAKS certificate is generated and self-signed by tetronik. If you use another certificate and you know, it is valid (signed by a CA), then you can also check
+		the box "Verify Certificate", to prevent the use of self-signed certificates.
+	</p>
+	<p>
+		This node also supports redundant DAKS connections. You enable the slave server, by setting the dropdown "Use Slave" to "Use slave server". Then,
+		just enter the parameters for the slave server, like you did for the master.<br>
+		<i>This node supports the EPSA-X Hot-Standby mechanism and a Socket Master/Slave as fallback, if Hot-Standby is not enabled or not available (like with the DAKS-ECO).</i>
+	</p>
+</script>
