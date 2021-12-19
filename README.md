@@ -2,7 +2,6 @@
 [![npm](https://img.shields.io/npm/v/node-red-contrib-tetronik-daks-iot)](https://www.npmjs.com/package/node-red-contrib-tetronik-daks-iot)
 ![GitHub license](https://img.shields.io/github/license/tetronik/node-red-contrib-tetronik-daks-iot)
 ![NodeJS LTS](https://img.shields.io/badge/NodeJS-LTS-brightgreen)
-![GitHub repo size](https://img.shields.io/github/repo-size/tetronik/node-red-contrib-tetronik-daks-iot)
 ![tetronik GmbH](https://img.shields.io/badge/-tetronik%20GmbH-blue)
 <br><br>
 
