@@ -51,7 +51,7 @@ module.exports = function(RED) {
 		this.user_main = removeUTF8Ctrls(n.user_main);
 		this.password_main = removeUTF8Ctrls(n.password_main);
 		this.client_main = removeUTF8Ctrls(n.client_main);
-		this.timeout_main = (n.timeout_main < 1 || n.timeout_main > 299)? 30 : n.timeout_main;
+		this.timeout_main = (n.timeout_main < 1 || n.timeout_main > 299)? 55 : n.timeout_main;
 		// slave
 		this.have_slave = n.have_slave;
 		this.name_slave = removeUTF8Ctrls(n.name_slave);
@@ -62,7 +62,7 @@ module.exports = function(RED) {
 		this.user_slave = removeUTF8Ctrls(n.user_slave);
 		this.password_slave = removeUTF8Ctrls(n.password_slave);
 		this.client_slave = removeUTF8Ctrls(n.client_slave);
-		this.timeout_slave = (n.timeout_slave < 1 || n.timeout_slave > 299)? 30 : n.timeout_slave;
+		this.timeout_slave = (n.timeout_slave < 1 || n.timeout_slave > 299)? 55 : n.timeout_slave;
 
 		// version string build
 		var nPackage = require('../package.json');
@@ -191,7 +191,7 @@ module.exports = function(RED) {
 	
 					// check queue size
 					if((100 / node.max_queuesize * node.queue.length) >= node.queuesize_warning) {
-						node.emit('Nodeoutput', [null, {payload: "Warning: Your Queue reached the warning level of " + node.queuesize_warning + "% .", level: 'WARNING', quantity: node.queuesize_warning}]);
+						node.emit('Nodeoutput', [null, {payload: "Warning: Your Queue reached the warning level of " + node.queuesize_warning + "% .", level: 'WARNING', quantity: (100 / node.max_queuesize * node.queue.length), items: node.queue.length}]);
 					}
 				}
 			} catch(err) {
@@ -1567,6 +1567,7 @@ node.warn("DELETE");
 							for(var i = 0; i < tl; i++) {
 								if(typeof node.queue[i] != 'undefined') {
 									if(node.queue[i].uniqid == ref) {
+										node.queue[i].send_confirmed = false;
 										node.queue[i] = detectedError(node.queue[i],406);
 									}
 								}
@@ -1579,6 +1580,7 @@ node.warn("DELETE");
 							for(var i = 0; i < tl; i++) {
 								if(typeof node.queue[i] != 'undefined') {
 									if(node.queue[i].uniqid == ref) {
+										node.queue[i].send_confirmed = false;
 										node.queue[i] = detectedError(node.queue[i],409);
 									}
 								}
@@ -1589,9 +1591,11 @@ node.warn("DELETE");
 							tLog(node, "The sent process is already in the DAKS: " + ref, 'INFO');
 							var tl = node.queue.length;
 							for(var i = 0; i < tl; i++) {
-								if(typeof node.queue[i].uniqid != 'undefined') {
-									if(node.queue[i].uniqid == ref) {
-										node.queue.splice(i,1);
+								if(typeof node.queue[i] != 'undefined') {
+									if(typeof node.queue[i].uniqid != 'undefined') {
+										if(node.queue[i].uniqid == ref) {
+											node.queue.splice(i,1);
+										}
 									}
 								}
 							}

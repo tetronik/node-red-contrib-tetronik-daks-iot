@@ -195,17 +195,17 @@
 
 				if(val === "group") {
 					pattern="^[0-9]*$";
-					maxlength="12";
+					maxlength="4";
 					placeholder = "Group-ID";
 					label = "Group-ID";
 
 					document.getElementById("node-input-audio_id").required = false;
 					$("#conntype_container").hide();
 				} else if(val === "single") {
-					pattern="^[\\\\0-9+\\-()/*#,;.]*$";
+					pattern="^[\\\\0-9+\\-()/*#]*$";
 					maxlength="24";
-					placeholder = "Call-Number (user ID)";
-					label = "Call-Number";
+					placeholder = "Phone-Number (user ID)";
+					label = "Phone-Number";
 
 					document.getElementById("node-input-audio_id").required = true;
 					$("#conntype_container").show();
@@ -232,7 +232,11 @@
 				var val = $(this).val();
 				if(val === "t") {
 					document.getElementById("node-input-number").disabled = false;
-					document.getElementById("node-input-number").placeholder = "Call-Number (user id)";
+					if($("#node-input-ptype").val() === "group") {
+						document.getElementById("node-input-number").placeholder = "Group-ID";
+					} else {
+						document.getElementById("node-input-number").placeholder = "Phone-Number (user id)";
+					}
 				} else {
 					document.getElementById("node-input-number").disabled = true;
 					document.getElementById("node-input-number").value = "";
@@ -256,7 +260,7 @@
 				var val = $(this).val();
 				if(val === "t") {
 					document.getElementById("node-input-calling_number").disabled = false;
-					document.getElementById("node-input-calling_number").placeholder = "Caller-Number";
+					document.getElementById("node-input-calling_number").placeholder = "Calling-Number";
 				} else {
 					document.getElementById("node-input-calling_number").disabled = true;
 					document.getElementById("node-input-calling_number").value = "";
@@ -268,7 +272,7 @@
 				var val = $(this).val();
 				if(val === "t") {
 					document.getElementById("node-input-calling_name").disabled = false;
-					document.getElementById("node-input-calling_name").placeholder = "Caller-Name";
+					document.getElementById("node-input-calling_name").placeholder = "Calling-Name";
 				} else {
 					document.getElementById("node-input-calling_name").disabled = true;
 					document.getElementById("node-input-calling_name").value = "";
@@ -511,12 +515,12 @@
 			</select>
 		</div>
 		<div class="form-row">
-			<label for="node-input-number"><i class="icon-tag"></i> <span id="number-label">Call-Number</span></label>
+			<label for="node-input-number"><i class="icon-tag"></i> <span id="number-label">Phone-Number</span></label>
 			<select id="node-input-number_S" style="width: 17% !important;">
 				<option value="t" selected>Input &gt;&gt;</option>
 				<option value="msg">External</option>
 			</select>
-			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-number" placeholder="Call-Number (user id)" pattern="^[\\0-9+\-()/*#,;.]*$" maxlength="24" required>
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-number" placeholder="Phone-Number (user id)" pattern="^[\\0-9+\-()/*#]*$" maxlength="24" required>
 		</div>
 		<div class="form-row" id="conntype_container">
 			<label for="node-input-conntype"><i class="icon-tag"></i> <span id="conntype-label">Connection-Type</span></label>
@@ -527,20 +531,20 @@
 			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-conntype" placeholder="Connection-Type" maxlength="3">
 		</div>
 		<div class="form-row">
-			<label for="node-input-calling_number"><i class="icon-tag"></i> Caller-Number</label>
+			<label for="node-input-calling_number"><i class="icon-tag"></i> Calling-Number</label>
 			<select id="node-input-calling_number_S" style="width: 17% !important;">
 				<option value="t" selected>Input &gt;&gt;</option>
 				<option value="msg">External</option>
 			</select>
-			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-calling_number" placeholder="Caller-Number" pattern="^[0-9*#]*$" maxlength="16">
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-calling_number" placeholder="Calling-Number" pattern="^[0-9*#]*$" maxlength="16">
 		</div>
 		<div class="form-row">
-			<label for="node-input-calling_name"><i class="icon-tag"></i> Caller-Name</label>
+			<label for="node-input-calling_name"><i class="icon-tag"></i> Calling-Name</label>
 			<select id="node-input-calling_name_S" style="width: 17% !important;">
 				<option value="t" selected>Input &gt;&gt;</option>
 				<option value="msg">External</option>
 			</select>
-			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-calling_name" placeholder="Caller-Name" maxlength="24">
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-calling_name" placeholder="Calling-Name" maxlength="24">
 		</div>
 		<div class="form-row">
 			<label for="node-input-message"><i class="icon-tag"></i> Message</label>
@@ -586,7 +590,7 @@
 				<option value="t" selected>Input &gt;&gt;</option>
 				<option value="msg">External</option>
 			</select>
-			<input type="number" style="width: 52% !important; margin-left: 2px;" id="node-input-delay" min="0" max="65535" value="0" placeholder="Delay [s]" required>
+			<input type="number" style="width: 52% !important; margin-left: 2px;" id="node-input-delay" min="0" max="999" value="0" placeholder="Delay [s]" required>
 		</div>
 		<div class="form-row">
 			<label for="node-input-attempts"><i class="icon-tag"></i> Attempts</label>
@@ -594,7 +598,7 @@
 				<option value="t" selected>Input &gt;&gt;</option>
 				<option value="msg">External</option>
 			</select>
-			<input type="number" style="width: 52% !important; margin-left: 2px;" id="node-input-attempts" min="0" max="65535" value="1" placeholder="Attempts" required>
+			<input type="number" style="width: 52% !important; margin-left: 2px;" id="node-input-attempts" min="0" max="20" value="1" placeholder="Attempts" required>
 		</div>
 		<div class="form-row">
 			<label for="node-input-callback"><i class="icon-file"></i> Callback</label>
@@ -650,7 +654,7 @@
 				<option value="t" selected>Input &gt;&gt;</option>
 				<option value="msg">External</option>
 			</select>
-			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-ncifno" placeholder="ID of the callback interface" maxlength="24">
+			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-ncifno" placeholder="ID of the callback interface" maxlength="3">
 		</div>
 		<div class="form-row">
 			<label for="node-input-cbckno"><i class="icon-tag"></i> Callback number</label>
@@ -658,7 +662,6 @@
 				<option value="t" selected>Input &gt;&gt;</option>
 				<option value="msg">External</option>
 			</select>
-			<!--<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-cbckno" placeholder="Callback number" pattern="^[\\0-9+\-()/*#,;.]*$" maxlength="24">-->
 			<input type="text" style="width: 52% !important; margin-left: 2px;" id="node-input-cbckno" placeholder="Callback number" pattern="^[\\0-9+\-()/*#]*$" maxlength="24">
 		</div>
 
@@ -915,11 +918,11 @@
 
 		<dt>delay <span class="property-type">string | number</span></dt>
 		<dd><b>Start:</b> Delay between two call attempts.<br>
-		<i>Specification: 0-65535</i></dd>
+		<i>Specification: 0-999</i></dd>
 
 		<dt>attempts <span class="property-type">string | number</span></dt>
 		<dd><b>Start:</b> Number of call attempts.<br>
-		<i>Specification: 0-65535</i></dd>
+		<i>Specification: 0-20</i></dd>
 
 		<dt>callback <span class="property-type">string</span></dt>
 		<dd><b>Start:</b> Callback definition: <i>No, NC-IF, NC-IF-DTMF, NC-IF-DTHRU, NC-IF-PREP, Phone, Phone-VC</i><br>(see DAKS documentation for details)</dd>
@@ -937,7 +940,7 @@
 
 		<dt>ncifno <span class="property-type">string</span></dt>
 		<dd><b>Start:</b> ID of the callback interface.<br>
-		<i>Specification: max. 24 characters</i></dd>
+		<i>Specification: max. 3 characters</i></dd>
 
 		<dt>cbckno <span class="property-type">string</span></dt>
 		<dd><b>Start:</b> Callback number.<br>

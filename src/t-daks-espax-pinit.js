@@ -126,14 +126,14 @@ module.exports = function(RED) {
 					}
 
 					if(this.number_S != "t") {
-						if(((msg.espax.type == "single" && /^[\\0-9+\-()/*#,;.]*$/.test(msg.number))) || ((msg.espax.type == "group" && /^[0-9]*$/.test(msg.number)))) {
+						if(((msg.espax.type == "single" && /^[\\0-9+\-()/*#]*$/.test(msg.number))) || ((msg.espax.type == "group" && /^[0-9]*$/.test(msg.number)))) {
 							msg.espax.number = msg.number;
 							if(msg.espax.number.length > 24 && msg.espax.type == "single") {
 								tLog(node, "The received \"Number\" was too long. It will be shortened to 24 characters.", 'WARNING');
 								msg.espax.number = msg.espax.number.substring(0,24);
-							} else if(msg.espax.number.length > 12 && msg.espax.type == "group") {
-								tLog(node, "The received \"Group ID\" was too long. It will be shortened to 12 characters.", 'WARNING');
-								msg.espax.number = msg.espax.number.substring(0,12);
+							} else if(msg.espax.number.length > 4 && msg.espax.type == "group") {
+								tLog(node, "The received \"Group ID\" was too long. It will be shortened to 4 characters.", 'WARNING');
+								msg.espax.number = msg.espax.number.substring(0,4);
 							}
 						} else {
 							tLog(node, "The reveived \"Number\" was not valid and will be rejected! Message: " + msg.number, 'ERROR');
@@ -228,8 +228,8 @@ module.exports = function(RED) {
 						if(isNaN(msg.espax.delay)) {
 							tLog(node, "The received \"Delay\"-value is not a number. The \"Delay\"-value is now set to default: 0.", 'WARNING');
 							msg.espax.delay = 0;
-						} else if(msg.espax.delay < 0 || msg.espax.delay > 65535) {
-							tLog(node, "The received \"Delay\"-value was out of range. It has to be between 0 and 65535. The \"Delay\"-value is now set to default: 0",'WARNING');
+						} else if(msg.espax.delay < 0 || msg.espax.delay > 999) {
+							tLog(node, "The received \"Delay\"-value was out of range. It has to be between 0 and 999. The \"Delay\"-value is now set to default: 0",'WARNING');
 							msg.espax.delay = 0;
 						}
 
@@ -243,8 +243,8 @@ module.exports = function(RED) {
 						if(isNaN(msg.espax.attempts)) {
 							tLog(node, "The received \"Attempts\" is not a number. The \"Attempts\"-value is now set to default: 1.", 'WARNING');
 							msg.espax.attempts = 1;
-						} else if(msg.espax.attempts < 0 || msg.espax.attempts > 65535) {
-							tLog(node, "The received \"Attempts\"-value was out of range. It has to be between 0 and 65535. The \"Attempts\"-value is now set to default: 1",'WARNING')
+						} else if(msg.espax.attempts < 0 || msg.espax.attempts > 20) {
+							tLog(node, "The received \"Attempts\"-value was out of range. It has to be between 0 and 20. The \"Attempts\"-value is now set to default: 1",'WARNING')
 							msg.espax.attempts = 1;
 						}
 
@@ -308,16 +308,16 @@ module.exports = function(RED) {
 
 					if(this.ncifno_S != "t") {
 						msg.espax.ncifno = msg.ncifno;
-						if(msg.espax.ncifno.length > 24) {
-							tLog(node, "The received \"NCIFNO\"-value was too long. It will be trimmed to 24 characters.", 'WARNING');
-							msg.espax.ncifno = msg.espax.ncifno.substring(0,24);
+						if(msg.espax.ncifno.length > 3) {
+							tLog(node, "The received \"NCIFNO\"-value was too long. It will be trimmed to 3 characters.", 'WARNING');
+							msg.espax.ncifno = msg.espax.ncifno.substring(0,3);
 						}
 					} else {
 						msg.espax.ncifno = this.ncifno;
 					}
 
 					if(this.cbckno_S != "t") {
-						if(/^[\\0-9+\-()/*#,;.]*$/.test(msg.cbckno)) {
+						if(/^[\\0-9+\-()/*#]*$/.test(msg.cbckno)) {
 							msg.espax.cbckno = msg.cbckno;
 							if(msg.espax.cbckno.length > 24) {
 								tLog(node, "The received \"Callback Number\" was too long. It will be trimmed to 24 characters.", 'WARNING');

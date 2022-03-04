@@ -2,7 +2,7 @@
 	"name" : "node-red-contrib-tetronik-daks-iot",
 	"private" : false,
 	"author" : "tetronik GmbH",
-	"version" : "0.9.1-beta",
+	"version" : "1.0.0",
 	"description" : "Send signals from various systems to the highly available DAKS alarm server to trigger automated communication processes.",
 	"license" : "Apache-2.0",
 	"contributors" : [{
@@ -16,7 +16,9 @@
 		"url" : "https://github.com/tetronik/node-red-contrib-tetronik-daks-iot.git"
 	},
 	"bugs" : "https://github.com/tetronik/node-red-contrib-tetronik-daks-iot/issues",
-	"engine" : ">=10",
+	"engines" : {
+		"node": ">=12"
+	},
 	"keywords": [
 		"node-red", "tetronik", "daks",
 		"espa", "espax", "espa-x",
@@ -34,6 +36,7 @@
 		"xml2js"
 	],
 	"node-red": {
+		"version": ">=2.0.0",
 		"nodes": {
 			"t-daks log":"src/t-daks-log.js",
 			"t-daks log-input":"src/t-daks-log-input.js",

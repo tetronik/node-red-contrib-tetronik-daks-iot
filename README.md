@@ -10,7 +10,6 @@
 [<div align="center">![](icons/tetronik_mRechtsform_2013-LOGO_Banner.png?raw=true)</div>](https://tetronik.com)<br><br>
 [<div align="center"><img src="icons/espa-x_logo.png" width="150"></div>](https://espa-x.org)<br>
 
-**>> *This package is currently a BETA version. Do NOT use in production environment.* <<**<br><br>
 **Send signals from various systems to the highly available DAKS alarm server to trigger automated communication processes.**
 <br>
 *This package works only in combination with a **tetronik DAKS** and a valid **ESPA-X session**. For a redundant operation two DAKS servers are required, each with its own ESPA-X session.*
@@ -94,7 +93,7 @@ npm show node-red-contrib-tetronik-daks-iot@* version
 Then install a special version with @M.M.P: (i.e.)
 
 ```
-npm install node-red-contrib-tetronik-daks-iot@0.9.0-beta
+npm install node-red-contrib-tetronik-daks-iot@1.0.0
 ```
 
 ## SECURITY
@@ -169,11 +168,9 @@ If you want to "catch" third-party events, to process them with the same log flo
 
 ## tetronik verified Packages
 
-*Review in progress for stable release.*
-
 | Package Name                        | Version | Information             | Certification status   |
 |-------------------------------------|:-------:|-------------------------|:----------------------:|
-| node-red                            | 2.0.6   |                         | :white_check_mark:     |
+| node-red                            | 1.2.2   |                         | :white_check_mark:     |
 | node-red-contrib-bacnet             | 0.2.4   | still in Beta           | :b:                    |
 | node-red-contrib-bool-gate          | 1.0.2   |                         | :white_check_mark:     |
 | node-red-contrib-calc               | 1.0.5   |                         | :white_check_mark:     |
