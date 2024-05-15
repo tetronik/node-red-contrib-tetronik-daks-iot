@@ -1,4 +1,9 @@
 # Changelog
+## 1.1.0
+* **Examples**
+  * Fixed example 3 for easier and more direct use
+* **ESPA-X Server config**
+  * Added System-LED support for DAKS-110 hardware
 
 ## 1.0.0 (first public release)
 * **ESPA-X**

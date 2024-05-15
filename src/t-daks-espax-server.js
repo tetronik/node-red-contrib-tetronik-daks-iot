@@ -788,7 +788,7 @@ node.warn("DELETE");
 			// hotStandBy 0=master operation |1=slave operation
 			if(node.hotStandBy == 0) {
 				// no master, but slave
-				if(!node.connection[0].getConnectionState() && node.connection[1].getConnectionState()) {
+				if(!node.connection[0].getConnectionState() && node.connection[1].getConnectionState() || node.hotStandBy_master_active) {
 					node.hotStandBy = 1;
 					tLog(node, "Switched connection to ESPA-X Slave", 'WARNING');
 					updateNodeStatus(node, "yellow", "dot", "Connected to Slave");
@@ -865,25 +865,29 @@ node.warn("DELETE");
 	 * Check for Kunbus Revolution-Pi and control LED A3
 	 */
 	function ctrlFrontLed(node, color) {
-		var check = process.env.isKunbus || null;
+		var check = process.env.isKunbus || process.env.isDAKS110 || null;
 		if(check == "isTetronik") {
 			switch(color) {
 				case "green":
 					setFrontLedColor(node,2,1);
 					setFrontLedColor(node,3,0);
+					setFrontLedColor(node,-1,"green");
 					break;
 				case "yellow":
 					setFrontLedColor(node,2,1);
 					setFrontLedColor(node,3,1);
+					setFrontLedColor(node,-1,"blink_green");
 					break;
 				case "red":
 					setFrontLedColor(node,2,0);
 					setFrontLedColor(node,3,1);
+					setFrontLedColor(node,-1,"red");
 					break;
 				case "off":
 				default:
 					setFrontLedColor(node,2,0);
 					setFrontLedColor(node,3,0);
+					setFrontLedColor(node,-1,"off");
 			}
 		}
 	}
@@ -895,14 +899,23 @@ node.warn("DELETE");
 		var check = process.env.isSystem || null;
 		switch(check) {
 			case "stretch-gpio":
-				shellExec(node, "gpio write " + pin + " " + state);
+				if(pin != -1) {
+					shellExec(node, "gpio write " + pin + " " + state);
+				}
 				break;
 			case "buster-raspi-gpio":
-				var pinState = "dl";
-				if(state == 1) {
-					pinState = "dh";
+				if(pin != -1) {
+					var pinState = "dl";
+					if(state == 1) {
+						pinState = "dh";
+					}
+					shellExec(node, "raspi-gpio set " + pin + " " + pinState);
 				}
-				shellExec(node, "raspi-gpio set " + pin + " " + pinState);
+				break;
+			case "daks-gpio":
+				if(pin == -1) {
+					shellExec(node, "echo setled " + state + " > /dev/tetronik_platform");
+				}
 				break;
 			default:
 				node.debug({payload: "Error-Code: 5ed719e4", err: "Missing environment variable."});
@@ -937,11 +950,16 @@ node.warn("DELETE");
 	function updateFile(node, read = false) {
         var fs = require('fs');
     
+		var fifoPath = 'queue_'+node.name+'.fifo';
+		if(process.env.isSystem == "daks-gpio") {
+			fifoPath = "/parts/data/NodeRed/" + fifoPath;
+		}
+	
         if(read) {
             var lineReader = require('readline');
         
             async function readLineByLine() {
-                const file = fs.createReadStream('queue_'+node.name+'.fifo');
+                const file = fs.createReadStream(fifoPath);
                 var read = lineReader.createInterface({input: file, crlfDelay: Infinity});
 
                 for await (const line of read) {
@@ -956,12 +974,12 @@ node.warn("DELETE");
 				}
             }
         
-            if(fs.existsSync('queue_'+node.name+'.fifo')) {
+            if(fs.existsSync(fifoPath)) {
                 readLineByLine();
             }
         
         } else {
-            var file = fs.createWriteStream('queue_'+node.name+'.fifo');
+            var file = fs.createWriteStream(fifoPath);
             file.on('error', function(err) {
                 //ERROR HANDLING
 				node.debug(err);
@@ -1916,6 +1934,8 @@ node.warn("DELETE");
 						tLog(node, "Both DAKS-Servers are in Hot-Standby mode.", 'CRITICAL');
 						node.warn("Both DAKS-Servers are in Hot-Standby mode.");
 					}
+					
+					changeNodeState_Connection(node);
 
 					tLog(node, "Servercondition >> Response-Code: " + rspCode + ", Response-Reason: " + rspReason + ", Server-Health: " + health + ", Hot-Standby: " + hotstby + ", Server-Load: " + load, 'INFO');
 					break;

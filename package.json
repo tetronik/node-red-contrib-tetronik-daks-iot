@@ -2,7 +2,7 @@
 	"name" : "node-red-contrib-tetronik-daks-iot",
 	"private" : false,
 	"author" : "tetronik GmbH",
-	"version" : "1.0.0",
+	"version" : "1.1.0",
 	"description" : "Send signals from various systems to the highly available DAKS alarm server to trigger automated communication processes.",
 	"license" : "Apache-2.0",
 	"contributors" : [{

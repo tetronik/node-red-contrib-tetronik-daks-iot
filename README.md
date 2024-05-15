@@ -1,8 +1,8 @@
-![Platform Node-RED](https://img.shields.io/badge/Platform-Node--Red-red)
-[![npm](https://img.shields.io/npm/v/node-red-contrib-tetronik-daks-iot)](https://www.npmjs.com/package/node-red-contrib-tetronik-daks-iot)
-![GitHub license](https://img.shields.io/github/license/tetronik/node-red-contrib-tetronik-daks-iot)
-![NodeJS LTS](https://img.shields.io/badge/NodeJS-LTS-brightgreen)
-![tetronik GmbH](https://img.shields.io/badge/-tetronik%20GmbH-blue)
+![Platform Node-RED](https://img.shields.io/badge/Platform-Node--Red-red#)
+[![npm](https://img.shields.io/npm/v/node-red-contrib-tetronik-daks-iot)](https://www.npmjs.com/package/node-red-contrib-tetronik-daks-iot#)
+![GitHub license](https://img.shields.io/github/license/tetronik/node-red-contrib-tetronik-daks-iot#)
+![NodeJS LTS](https://img.shields.io/badge/NodeJS-LTS-brightgreen#)
+![tetronik GmbH](https://img.shields.io/badge/-tetronik%20GmbH-blue#)
 <br><br>
 
 # DAKS-IoT (node-red-contrib-tetronik-daks-iot)

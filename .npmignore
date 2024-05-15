@@ -1,6 +1,8 @@
+.gitlab/
 .vscode/
 .VSCodeCounter/
 node_modules/
 package-lock.json
 src/t-test-test.html
 src/t-test-test.js
+/*.tgz
