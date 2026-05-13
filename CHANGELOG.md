@@ -1,4 +1,20 @@
 # Changelog
+## 1.1.1
+* **ESPA-X Server config**
+  * Fixed master/slave fallback and S-HOTSTBY routing to reliably prefer the active DAKS server
+  * Fixed conflict handling when both DAKS servers report inconsistent or standby-only hot-standby states
+  * Fixed heartbeat/reconnect handling in hot-standby mode to prevent unintended shutdowns or disconnect loops on timeout
+  * Improved login/session handling when a DAKS session is still active or only one server is currently available
+
+* **ESPA-X**
+  * Fixed validation and default handling for multiple input fields so optional values are initialized correctly and invalid messages are detected more reliably
+  * Fixed process reference and result handling for START, STARTED, EVENT and ENDED responses, especially when DAKS returns array-based values
+
+* **Logging / Runtime stability**
+  * Fixed a crash in log-input when `msg.level` is missing
+  * Improved behavior when no log connector is configured
+  * Fixed cleanup of event listeners on node close/redeploy to avoid duplicate events and stale listeners
+
 ## 1.1.0
 * **Examples**
   * Fixed example 3 for easier and more direct use

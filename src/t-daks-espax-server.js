@@ -103,8 +103,13 @@ module.exports = function(RED) {
 
 		// define master and slave connections
 		node.hotStandBy = 0;
-		node.hotStandBy_master_active = true;
-		node.hotStandBy_slave_active = true;
+		node.hotStandBy_mode = "classic";			// classic, hot
+		node.hotStandBy_partial_warning = false;
+		node.hotStandBy_conflict = null;
+		node.connection_state = {
+			0: {ready: false, standby: null},
+			1: {ready: false, standby: null}
+		};
 		node.connection = {};
 		node.connection[0] = new EspaXConnection(node, configMain, true, net_1, tls_1);	// predefine an espa-x MAIN connection
 		// only define slave if defined
@@ -145,10 +150,8 @@ module.exports = function(RED) {
 		 * Input data for the queue
 		 */
 		node.addListener('MessageToQueue', function(msg) {
-
-			if(!msg.again) {
-				msg.used_connection = node.hotStandBy;
-			}
+			var currentConnection = (typeof msg.used_connection === 'number') ? msg.used_connection : node.hotStandBy;
+			msg.used_connection = refreshActiveConnection(node, currentConnection);
 
 			// get new invoke id
 			var invokeID = "";
@@ -363,7 +366,7 @@ module.exports = function(RED) {
 					if(!checkDouble(node, msg)) {
 						// push message to process queue
 						msg.timestamp = Date.now();
-						msg.used_connection = node.hotStandBy;
+						msg.used_connection = refreshActiveConnection(node, msg.used_connection);
 						/*if(node.queue.length < node.max_queuesize) {*/
 							node.queue.push(msg);
 						/*} else {
@@ -658,6 +661,223 @@ module.exports = function(RED) {
 		}
 	}
 
+	function hasSlaveConnection(node) {
+		return node.have_slave == "slave" && node.connection[1] != undefined;
+	}
+
+	function getConnectionRuntimeState(node, index) {
+		if(typeof node.connection_state == 'undefined') {
+			node.connection_state = {};
+		}
+		if(typeof node.connection_state[index] == 'undefined') {
+			node.connection_state[index] = {ready: false, standby: null};
+		}
+		return node.connection_state[index];
+	}
+
+	function normalizeHotStandByValue(value) {
+		if(Array.isArray(value)) {
+			value = value[0];
+		}
+
+		if(value === true || value === 'true') {
+			return true;
+		}
+		if(value === false || value === 'false') {
+			return false;
+		}
+
+		return null;
+	}
+
+	function hasKnownStandByState(node, index) {
+		return getConnectionRuntimeState(node, index).standby !== null;
+	}
+
+	function updateHotStandByMode(node) {
+		if(!hasSlaveConnection(node)) {
+			node.hotStandBy_mode = "classic";
+			node.hotStandBy_partial_warning = false;
+			return;
+		}
+
+		var masterKnown = hasKnownStandByState(node, 0);
+		var slaveKnown = hasKnownStandByState(node, 1);
+
+		if(masterKnown && slaveKnown) {
+			node.hotStandBy_mode = "hot";
+			node.hotStandBy_partial_warning = false;
+		} else if(node.hotStandBy_mode != "hot" && (masterKnown || slaveKnown)) {
+			if(!node.hotStandBy_partial_warning) {
+				tLog(node, "Only one DAKS-Server provides valid S-HOTSTBY information. Falling back to classic master/slave routing until both servers report standby state.", 'WARNING');
+				node.hotStandBy_partial_warning = true;
+			}
+		} else if(!masterKnown && !slaveKnown) {
+			node.hotStandBy_partial_warning = false;
+		}
+	}
+
+	function setConnectionReadyState(node, index, ready) {
+		var state = getConnectionRuntimeState(node, index);
+		state.ready = !!ready;
+		if(!ready) {
+			state.standby = null;
+		}
+		updateHotStandByMode(node);
+	}
+
+	function setConnectionStandByState(node, index, hotStandByValue) {
+		var state = getConnectionRuntimeState(node, index);
+		if(hotStandByValue !== null) {
+			state.standby = hotStandByValue;
+		}
+		updateHotStandByMode(node);
+	}
+
+	function isConnectionReady(node, index) {
+		if(node.connection[index] == undefined) {
+			return false;
+		}
+
+		var state = getConnectionRuntimeState(node, index);
+		if(!state.ready) {
+			return false;
+		}
+
+		try {
+			if(!node.connection[index].getConnectionState()) {
+				return false;
+			}
+			var sid = node.connection[index].getSessionID();
+			return sid !== undefined && sid !== null && sid !== "";
+		} catch(err) {
+			node.debug({payload: "Error-Code: 8717f2ef", err: err, index: index});
+		}
+
+		return false;
+	}
+
+	function logHotStandByConflict(node, key, message, level) {
+		if(node.hotStandBy_conflict != key) {
+			node.hotStandBy_conflict = key;
+			tLog(node, message, level);
+			if(level == 'CRITICAL') {
+				node.warn(message);
+			}
+		}
+	}
+
+	function determinePreferredConnection(node, currentConnection) {
+		var masterReady = isConnectionReady(node, 0);
+		if(!hasSlaveConnection(node)) {
+			return (masterReady) ? 0 : 0;
+		}
+
+		var slaveReady = isConnectionReady(node, 1);
+
+		if(node.hotStandBy_mode != "hot") {
+			node.hotStandBy_conflict = null;
+			if(masterReady) {
+				return 0;
+			}
+			if(slaveReady) {
+				return 1;
+			}
+			return (typeof currentConnection === 'number') ? currentConnection : 0;
+		}
+
+		var masterStandBy = getConnectionRuntimeState(node, 0).standby;
+		var slaveStandBy = getConnectionRuntimeState(node, 1).standby;
+		var masterActive = masterReady && masterStandBy === false;
+		var slaveActive = slaveReady && slaveStandBy === false;
+		var masterUnknown = masterReady && masterStandBy === null;
+		var slaveUnknown = slaveReady && slaveStandBy === null;
+		var masterStandByOnly = masterReady && masterStandBy === true;
+		var slaveStandByOnly = slaveReady && slaveStandBy === true;
+		var currentReady = (currentConnection === 0 && masterReady) || (currentConnection === 1 && slaveReady);
+
+		if(masterActive && slaveActive) {
+			logHotStandByConflict(node, "both-active", "Both DAKS-Servers report S-HOTSTBY=false. Preferring ESPA-X Master.", 'WARNING');
+			return 0;
+		}
+		if(masterActive) {
+			node.hotStandBy_conflict = null;
+			return 0;
+		}
+		if(slaveActive) {
+			node.hotStandBy_conflict = null;
+			return 1;
+		}
+
+		if(masterUnknown && slaveUnknown) {
+			node.hotStandBy_conflict = null;
+			if(currentReady) {
+				return currentConnection;
+			}
+			return 0;
+		}
+		if(masterUnknown) {
+			node.hotStandBy_conflict = null;
+			return 0;
+		}
+		if(slaveUnknown) {
+			node.hotStandBy_conflict = null;
+			return 1;
+		}
+
+		if(masterStandByOnly && slaveStandByOnly) {
+			logHotStandByConflict(node, "both-standby", "Both DAKS-Servers are in Hot-Standby mode.", 'CRITICAL');
+			if(currentReady) {
+				return currentConnection;
+			}
+			return 0;
+		}
+
+		if(masterStandByOnly && !slaveReady) {
+			logHotStandByConflict(node, "only-master-standby", "Only the ESPA-X Master is ready, but it reports S-HOTSTBY=true. No processes can be started on this DAKS.", 'CRITICAL');
+			return 0;
+		}
+		if(slaveStandByOnly && !masterReady) {
+			logHotStandByConflict(node, "only-slave-standby", "Only the ESPA-X Slave is ready, but it reports S-HOTSTBY=true. No processes can be started on this DAKS.", 'CRITICAL');
+			return 1;
+		}
+
+		node.hotStandBy_conflict = null;
+
+		if(currentReady) {
+			return currentConnection;
+		}
+		if(masterReady && !slaveReady) {
+			return 0;
+		}
+		if(slaveReady && !masterReady) {
+			return 1;
+		}
+		if(masterReady && slaveReady) {
+			return 0;
+		}
+
+		return (typeof currentConnection === 'number') ? currentConnection : 0;
+	}
+
+	function refreshActiveConnection(node, currentConnection) {
+		var previousConnection = node.hotStandBy;
+		var nextConnection = determinePreferredConnection(node, currentConnection);
+
+		node.hotStandBy = nextConnection;
+
+		if(hasSlaveConnection(node) && previousConnection !== nextConnection) {
+			if(nextConnection === 0) {
+				tLog(node, "Returned to ESPA-X Master.", 'INFO');
+			} else if(nextConnection === 1) {
+				tLog(node, "Switched connection to ESPA-X Slave", 'WARNING');
+			}
+		}
+
+		changeNodeState_Connection(node);
+		return nextConnection;
+	}
+
 	/*
 	 * background queue handler
 	 * check if there is a data timeout and update queue-file
@@ -680,31 +900,16 @@ module.exports = function(RED) {
 						ma = node.max_age;
 					}
 
-					// check if there is at least one connection to a DAKS
-					var tmpHQD = null;
+					// check if there is at least one ready connection to a DAKS
 					try {
-						if(node.connection[1] != undefined) {
-							tmpHQD = node.connection[1].getConnectionState();
-						}
-					} catch(err) {
-						node.debug({payload: "Error-Code: 99ffb6a0", err: err});
-					}
-					
-					try {
-						if(node.connection[0].getConnectionState() || tmpHQD) {
+						if(isConnectionReady(node, 0) || isConnectionReady(node, 1)) {
 							// Check, if the DAKS received the process. Check only, if msg-timestamp is older than 10s
 							if(((node.queue[i].timestamp + (1000*10)) <= Date.now())) {
 								if(typeof node.queue[i].send_confirmed != 'undefined') {
 									if(!node.queue[i].send_confirmed) {
-										if(node.queue[i].used_connection == 0) {
-											node.queue[i].used_connection = 1;
-											node.queue[i].again = true;
-											node.emit("MessageToQueue", node.queue[i]);
-										} else if(node.queue[i].used_connection == 1) {
-											node.queue[i].used_connection = 0;
-											node.queue[i].again = true;
-											node.emit("MessageToQueue", node.queue[i]);
-										}
+										node.queue[i].used_connection = refreshActiveConnection(node, node.queue[i].used_connection);
+										node.queue[i].again = true;
+										node.emit("MessageToQueue", node.queue[i]);
 									}
 								}
 							}
@@ -728,7 +933,7 @@ module.exports = function(RED) {
 							}
 							
 							// Delete every item from queue, which has an error
-							else if(node.queue[i].last_error != 'undefined') {
+							else if(typeof node.queue[i].last_error !== 'undefined') {
 	
 								// if error exists at least an hour
 								if((node.queue[i].first_error + (1000*60*60)) <= Date.now()) {
@@ -750,6 +955,8 @@ module.exports = function(RED) {
 	
 								// check time until last error and resend if needed (after 10s)
 								else if(node.queue[i].last_error_time + (1000*10) <= Date.now()) {
+									node.queue[i].used_connection = refreshActiveConnection(node, node.queue[i].used_connection);
+
 									// check message type
 									// normal Message
 									if(typeof node.queue[i].espax != 'undefined') {
@@ -784,67 +991,37 @@ node.warn("DELETE");
 	 * Change node state with master/slave detection
 	 */
 	function changeNodeState_Connection(node) {
-		if(node.have_slave == "slave" && node.connection[1] != undefined) {
-			// hotStandBy 0=master operation |1=slave operation
-			if(node.hotStandBy == 0) {
-				// no master, but slave
-				if(!node.connection[0].getConnectionState() && node.connection[1].getConnectionState() || node.hotStandBy_master_active) {
-					node.hotStandBy = 1;
-					tLog(node, "Switched connection to ESPA-X Slave", 'WARNING');
-					updateNodeStatus(node, "yellow", "dot", "Connected to Slave");
-					ctrlFrontLed(node,"yellow");
-				}
-				// both
-				else if(node.connection[0].getConnectionState() && node.connection[1].getConnectionState()) {
-					updateNodeStatus(node, "green", "dot", "Connected to Master");
-					ctrlFrontLed(node,"green");
-				}
-				// master, but no slave
-				else if(node.connection[0].getConnectionState() && !node.connection[1].getConnectionState()){
-					tLog(node, "ESPA-X Slave is not available.", 'WARNING');
-					updateNodeStatus(node, "yellow", "dot", "Connected to Master");
-					ctrlFrontLed(node,"yellow");
-				}
-				// none
-				else if(!node.connection[0].getConnectionState() && !node.connection[1].getConnectionState()) {
-					tLog(node, "Connection ERROR, no ESPA-X Master or Slave are available!", 'ALARM');
-					updateNodeStatus(node, "red", "dot", "Connection ERROR");
-					ctrlFrontLed(node,"red");
-				}
-			} else {
-				// master, but no slave
-				if(node.connection[0].getConnectionState() && !node.connection[1].getConnectionState()) {
-					node.hotStandBy = 1;
-					tLog(node, "Returned to ESPA-X Master.", 'INFO');
-					tLog(node, "ESPA-X Slave is not available.", 'WARNING');
-					updateNodeStatus(node, "yellow", "dot", "Connected to Master");
-					ctrlFrontLed(node,"yellow");
-				}
-				// both
-				else if(node.connection[0].getConnectionState() && node.connection[1].getConnectionState()) {
-					tLog(node, "Returned to ESPA-X Master.", 'INFO');
-					updateNodeStatus(node, "green", "dot", "Connected to Master");
-					ctrlFrontLed(node,"green");
-					node.hotStandBy = 0;
-				}
-				// no master, but slave
-				else if(!node.connection[0].getConnectionState() && node.connection[1].getConnectionState()){
-					tLog(node, "Returned to ESPA-X Slave.", 'INFO');
-					tLog(node, "ESPA-X Master is not available.", 'WARNING');
-					updateNodeStatus(node, "yellow", "dot", "Connected to Slave");
-					ctrlFrontLed(node,"yellow");
-				}
-				// none
-				else if(!node.connection[0].getConnectionState() && !node.connection[1].getConnectionState()) {
-					tLog(node, "Connection ERROR, no ESPA-X Master or Slave are available!", 'ALARM');
-					updateNodeStatus(node, "red", "dot", "Connection ERROR");
-					ctrlFrontLed(node,"red");
-				}
+		if(hasSlaveConnection(node)) {
+			var masterReady = isConnectionReady(node, 0);
+			var slaveReady = isConnectionReady(node, 1);
+
+			if(node.hotStandBy == 0 && masterReady && slaveReady) {
+				updateNodeStatus(node, "green", "dot", "Connected to Master");
+				ctrlFrontLed(node,"green");
+			}
+			else if(node.hotStandBy == 0 && masterReady) {
+				updateNodeStatus(node, "yellow", "dot", "Connected to Master");
+				ctrlFrontLed(node,"yellow");
+			}
+			else if(node.hotStandBy == 1 && slaveReady) {
+				updateNodeStatus(node, "yellow", "dot", "Connected to Slave");
+				ctrlFrontLed(node,"yellow");
+			}
+			else if(masterReady) {
+				updateNodeStatus(node, "yellow", "dot", "Connected to Master");
+				ctrlFrontLed(node,"yellow");
+			}
+			else if(slaveReady) {
+				updateNodeStatus(node, "yellow", "dot", "Connected to Slave");
+				ctrlFrontLed(node,"yellow");
+			}
+			else {
+				updateNodeStatus(node, "red", "dot", "Connection ERROR");
+				ctrlFrontLed(node,"red");
 			}
 		} else if(node.connection[0] != undefined) {
 			// connected
-			if(node.connection[0].getConnectionState()) {
-				tLog(node, "Reconnected to ESPA-X Server", 'INFO');
+			if(isConnectionReady(node, 0)) {
 				updateNodeStatus(node, "green", "dot", "Connected to Server");
 				ctrlFrontLed(node,"green");
 			}
@@ -1176,6 +1353,7 @@ node.warn("DELETE");
 		var reConnectTimeout = 5;	// in seconds
 		var reConnectTimeoutObj = null;
 		var heartbeatTimer = null;
+		var aliveTimer = null;
 		
 		// little eager helper
 		var that = this;
@@ -1298,6 +1476,7 @@ node.warn("DELETE");
 					} catch(err) {}
 					tcpConnection = null;
 					sessionID = null;
+					setConnectionReadyState(node, (master?0:1), false);
 
 					clearTimeout(heartbeatTimer);
 					heartbeatTimer = null;
@@ -1317,7 +1496,7 @@ node.warn("DELETE");
 					}
 				
 					// change to other connection
-					changeNodeState_Connection(node);
+					refreshActiveConnection(node, node.hotStandBy);
 				});
 			} catch(err) {
 				tLog(node, err, 'INFO');
@@ -1445,7 +1624,7 @@ node.warn("DELETE");
 				case "RSP.LOGIN":
 					var rspCode = parseInt(params["RSP-CODE"]);
 					tLog(node, "Response >> Login.", 'INFO');
-					if(rspCode == 200) {
+					if(rspCode == 200 || rspCode == 450) {
 						try {
 							
 							sessionID = params.$["sessionID"];
@@ -1479,10 +1658,17 @@ node.warn("DELETE");
 							// END - Check, if ESPA-X Server is a DAKS
 							
 							tLog(node, "Successfull login.", 'INFO');
-							setTimeout(onAliveTimer, 5000);
+							if(rspCode == 450) {
+								tLog(node, "Existing ESPA-X session is still active on DAKS. Reusing current session information.", 'WARNING');
+							}
+							if(aliveTimer != null) {
+								clearTimeout(aliveTimer);
+							}
+							aliveTimer = setTimeout(onAliveTimer, 5000);
+							setConnectionReadyState(node, (master?0:1), true);
 							tLog(node, "Alive timer is running.", 'INFO');
 							tLog(node, "NodeRed is connected to DAKS.", 'INFO');
-							changeNodeState_Connection(node);
+							refreshActiveConnection(node, node.hotStandBy);
 
 							var invokeID = getNextInvokeID();
 							var conditionXml = {
@@ -1498,7 +1684,7 @@ node.warn("DELETE");
 							// No login possible!
 							// Authentication failed, no resilt given...
 							node.login_failed[(master?0:1)] = true;
-							tLog(node, "Login Failed on " + (master)?"Master":"Slave" + "! Please check your DAKS settings and your login credentials.", "ERROR");
+							tLog(node, "Login Failed on " + ((master)?"Master":"Slave") + "! Please check your DAKS settings and your login credentials.", "ERROR");
 						}
 					} else if(rspCode == 401) { // unauthorized
 						tLog(node, "Your login session is unauthorized.", 'ERROR');
@@ -1526,7 +1712,10 @@ node.warn("DELETE");
 						if(heartbeatTimer != null) {
 							clearTimeout(heartbeatTimer);
 						}
-						setTimeout(onAliveTimer, ((master)?node.timeout_main:node.timeout_slave) * 1000);
+						if(aliveTimer != null) {
+							clearTimeout(aliveTimer);
+						}
+						aliveTimer = setTimeout(onAliveTimer, ((master) ? node.timeout_main : node.timeout_slave) * 1000);
 					}
 					break;
 				
@@ -1534,13 +1723,14 @@ node.warn("DELETE");
 				case "RSP.P-START":
 					var rspCode = parseInt(params["RSP-CODE"]);
 					var ref = params["CP-PR-REF"];
+					var ref0 = Array.isArray(ref) ? ref[0] : ref;
 					var tan = parseInt(params["SP-PR-TAN"]);
-					tLog(node, "Response >> START. Reference: " + ref, 'INFO');
+					tLog(node, "Response >> START. Reference: " + ref0, 'INFO');
 
 					var tl = node.queue.length;
 					for(var i = 0; i < tl; i++) {
 						if(typeof node.queue[i].uniqid != 'undefined') {
-							if(node.queue[i].uniqid == ref) {
+							if(node.queue[i].uniqid == ref0) {
 								if(!node.queue[i].send_confirmed) {
 									node.queue[i].send_confirmed = true;
 								}
@@ -1550,11 +1740,11 @@ node.warn("DELETE");
 
 					switch(rspCode) {
 						case 200:
-							tLog(node, ref + " OK with TAN: " + tan, 'INFO');
+							tLog(node, ref0 + " OK with TAN: " + tan, 'INFO');
 							var tl = node.queue.length;
 							for(var i = 0; i < tl; i++) {
 								if(typeof node.queue[i].uniqid != 'undefined') {
-									if(node.queue[i].uniqid == ref) {
+									if(node.queue[i].uniqid == ref0) {
 										node.queue[i].tan = tan;
 										node.queue[i].timestamp = Date.now();
 										node.queue[i].mag_age = 24 * 60 * 1000 * 60;
@@ -1568,11 +1758,11 @@ node.warn("DELETE");
 							break;
 
 						case 400:	// bad request
-							tLog(node, "There was an error in the data. Reference: " + ref, 'ERROR');
+							tLog(node, "There was an error in the data. Reference: " + ref0, 'ERROR');
 							var tl = node.queue.length;
 							for(var i = 0; i < tl; i++) {
 								if(typeof node.queue[i].uniqid != 'undefined') {
-									if(node.queue[i].uniqid == ref) {
+									if(node.queue[i].uniqid == ref0) {
 										node.queue.splice(i,1);
 									}
 								}
@@ -1580,11 +1770,11 @@ node.warn("DELETE");
 							break;
 
 						case 406:	// not acceptable
-							tLog(node, "The process was not accepted. Reference: " + ref, 'WARNING');
+							tLog(node, "The process was not accepted. Reference: " + ref0, 'WARNING');
 							var tl = node.queue.length;
 							for(var i = 0; i < tl; i++) {
 								if(typeof node.queue[i] != 'undefined') {
-									if(node.queue[i].uniqid == ref) {
+									if(node.queue[i].uniqid == ref0) {
 										node.queue[i].send_confirmed = false;
 										node.queue[i] = detectedError(node.queue[i],406);
 									}
@@ -1593,11 +1783,11 @@ node.warn("DELETE");
 							break;
 
 						case 409:	// conflict
-							tLog(node, "There was a ressource conflict with process reference: " + ref, 'WARNING');
+							tLog(node, "There was a ressource conflict with process reference: " + ref0, 'WARNING');
 							var tl = node.queue.length;
 							for(var i = 0; i < tl; i++) {
 								if(typeof node.queue[i] != 'undefined') {
-									if(node.queue[i].uniqid == ref) {
+									if(node.queue[i].uniqid == ref0) {
 										node.queue[i].send_confirmed = false;
 										node.queue[i] = detectedError(node.queue[i],409);
 									}
@@ -1606,12 +1796,12 @@ node.warn("DELETE");
 							break;
 
 						case 450:	// duplicate
-							tLog(node, "The sent process is already in the DAKS: " + ref, 'INFO');
+							tLog(node, "The sent process is already in the DAKS: " + ref0, 'INFO');
 							var tl = node.queue.length;
 							for(var i = 0; i < tl; i++) {
 								if(typeof node.queue[i] != 'undefined') {
 									if(typeof node.queue[i].uniqid != 'undefined') {
-										if(node.queue[i].uniqid == ref) {
+										if(node.queue[i].uniqid == ref0) {
 											node.queue.splice(i,1);
 										}
 									}
@@ -1620,18 +1810,12 @@ node.warn("DELETE");
 							break;
 				
 						case 503:	// Service Unavailable
-							tLog(node, "The service in the DAKS is unavailable. Reference: " + ref, 'ERROR');
+							tLog(node, "The service in the DAKS is unavailable. Reference: " + ref0, 'ERROR');
 							var tl = node.queue.length;
 							for(var i = 0; i < tl; i++) {
 								if(typeof node.queue[i].uniqid != 'undefined') {
-									if(node.queue[i].uniqid == ref) {
-										if(node.connection[0] != undefined && node.connection[1] != undefined) {
-											if(node.queue[i].used_connection == 0 && node.connection[1].getConnectionState()) {
-												node.queue[i].used_connection = 1;
-											} else if(node.queue[i].used_connection == 1 && node.connection[0].getConnectionState()) {
-												node.queue[i].used_connection = 0;
-											}
-										}
+									if(node.queue[i].uniqid == ref0) {
+										node.queue[i].used_connection = refreshActiveConnection(node, node.queue[i].used_connection);
 										node.queue[i] = detectedError(node.queue[i],503);
 									}
 								}
@@ -1639,11 +1823,11 @@ node.warn("DELETE");
 							break;
 
 						default:
-							tLog(node, "Status code not known. Message will be deleted with reference: " + ref, 'INFO');
+							tLog(node, "Status code not known. Message will be deleted with reference: " + ref0, 'INFO');
 							var tl = node.queue.length;
 							for(var i = 0; i < tl; i++) {
 								if(typeof node.queue[i].uniqid != 'undefined') {
-									if(node.queue[i].uniqid == ref) {
+									if(node.queue[i].uniqid == ref0) {
 										node.queue.splice(i,1);
 									}
 								}
@@ -1784,13 +1968,7 @@ node.warn("DELETE");
 							for(var i = 0; i < tl; i++) {
 								if(typeof node.queue[i].uniqid != 'undefined') {
 									if(node.queue[i].invokeID == iID) {
-										if(node.connection[0] != undefined && node.connection[1] != undefined) {
-											if(node.queue[i].used_connection == 0 && node.connection[1].getConnectionState()) {
-												node.queue[i].used_connection = 1;
-											} else if(node.queue[i].used_connection == 1 && node.connection[0].getConnectionState()) {
-												node.queue[i].used_connection = 0;
-											}
-										}
+										node.queue[i].used_connection = refreshActiveConnection(node, node.queue[i].used_connection);
 										node.queue[i] = detectedError(node.queue[i],503);
 									}
 								}
@@ -1814,14 +1992,16 @@ node.warn("DELETE");
 				// process started indication
 				case "IND.P-STARTED":
 					var ref = params["CP-PR-REF"];
+					var ref0 = Array.isArray(ref) ? ref[0] : ref;
 					var tan = parseInt(params["SP-PR-TAN"]);
 					var phone = params["CP-PHONENO"] || params["CP-GROUPID"];
+					var phone0 = Array.isArray(phone) ? phone[0] : phone;
 					var state = params["SP-STATUS"];
-					tLog(node, "Indication >> STARTED. Reference: " + ref + ", State: " + state, 'INFO');
+					tLog(node, "Indication >> STARTED. Reference: " + ref0 + ", State: " + state, 'INFO');
 					var tl = node.queue.length;
 					for(var i = 0; i < tl; i++) {
 						if(typeof node.queue[i].uniqid != 'undefined') {
-							if(node.queue[i].uniqid == ref && node.queue[i].tan == tan && node.queue[i].espax.number == phone) {
+							if(node.queue[i].uniqid == ref0 && node.queue[i].tan == tan && node.queue[i].espax.number == phone0) {
 								node.queue[i].state = state;
 								node.queue[i].last_error = undefined;
 								node.queue[i].err_counter = undefined;
@@ -1836,6 +2016,7 @@ node.warn("DELETE");
 				case "IND.P-ENDED":
 					node.debug("ENDED");
 					var ref = params["CP-PR-REF"];
+					var ref0 = Array.isArray(ref) ? ref[0] : ref;
 					var tan = parseInt(params["SP-PR-TAN"]);
 					var result = params["SP-RESULT"];
 					var endReason = params["SP-ENDREASON"];
@@ -1845,21 +2026,24 @@ node.warn("DELETE");
 
 					for(var i = 0; i < tl; i++) {
 						if(typeof node.queue[i].uniqid != 'undefined' || typeof node.queue[i].event_id != 'undefined') {
-							if(node.queue[i].uniqid == ref[0]) {
+							if(node.queue[i].uniqid == ref0) {
 								eventId = node.queue[i].event_id;
 								type = node.queue[i].espax.type;
 							}
 						}
 					}
-					if(result[0] != undefined) {
-						node.emit('Nodeoutput', [{"payload":{"event_id":eventId,"endReason":(endReason!=undefined)?endReason[0]:"","result":(result!=undefined)?result[0]:"","ref":ref[0],"tan":tan},"msgtype":"response","type":(type!=undefined)?type:""},null]);
+
+					
+
+					if(result && result[0] != undefined) {
+						node.emit('Nodeoutput', [{"payload":{"event_id":eventId,"endReason":(endReason!=undefined)?endReason[0]:"","result":(result!=undefined)?result[0]:"","ref":ref0,"tan":tan},"msgtype":"response","type":(type!=undefined)?type:""},null]);
 					}
-					tLog(node, "Indication >> ENDED. Reference: " + ref + "" + ((result != undefined)?(", Result: " + result):"") + "" + ((endReason != undefined)?(", EndReason: " + endReason):"") + "", 'INFO');
+					tLog(node, "Indication >> ENDED. Reference: " + ref0 + "" + ((result != undefined)?(", Result: " + result):"") + "" + ((endReason != undefined)?(", EndReason: " + endReason):"") + "", 'INFO');
 					var tl = node.queue.length;
 					for(var i = 0; i < tl; i++) {
 						if(typeof node.queue[i] != 'undefined') {
 							if(typeof node.queue[i].uniqid != 'undefined') {
-								if(node.queue[i].uniqid == ref && node.queue[i].tan == tan) {
+								if(node.queue[i].uniqid == ref0 && node.queue[i].tan == tan) {
 									node.queue.splice(i,1);
 								}
 							}
@@ -1870,18 +2054,21 @@ node.warn("DELETE");
 				// process status indication
 				case "IND.P-STATUS":
 					var ref = params["CP-PR-REF"];
+					var ref0 = Array.isArray(ref) ? ref[0] : ref;
 					var tan = parseInt(params["SP-PR-TAN"]);
 					var state = params["SP-STATUS"];
 					var result = params["SP-RESULT"];
-					tLog(node, "Indication >> STATUS. Reference: " + ref + ", State: " + state, 'INFO');
+					tLog(node, "Indication >> STATUS. Reference: " + ref0 + ", State: " + state, 'INFO');
 					break;
 
 				// process event indication
 				case "IND.P-EVENT":
 					var ref = params["CP-PR-REF"];
+					var ref0 = Array.isArray(ref) ? ref[0] : ref;
 					var tan = parseInt(params["SP-PR-TAN"]);
 					var state = params["SS-STATUS"];
 					var result = params["SS-RESULT"];
+					var result0 = (result && result[0] != undefined) ? result[0] : "";
 					var direction = params["SS-DIRECTION"];
 					/*var time = -1;
 					
@@ -1898,16 +2085,16 @@ node.warn("DELETE");
 					var tl = node.queue.length;
 					for(var i = 0; i < tl; i++) {
 						if(typeof node.queue[i].uniqid != 'undefined' || typeof node.queue[i].event_id != 'undefined') {
-							if(node.queue[i].uniqid == ref[0]) {
+							if(node.queue[i].uniqid == ref0) {
 								eventId = node.queue[i].event_id;
 								type = node.queue[i].espax.type;
 							}
 						}
 					}
 					if(type != "group") {
-						node.emit('Nodeoutput', [{"payload":{"event_id":eventId,"state":(state!=undefined)?state[0]:"","result":result[0],"ref":ref[0],"tan":tan},"msgtype":"response","type":(type!=undefined)?type:""},null]);
+						node.emit('Nodeoutput', [{"payload":{"event_id":eventId,"state":(state!=undefined)?state[0]:"","result":result0,"ref":ref0,"tan":tan},"msgtype":"response","type":(type!=undefined)?type:""},null]);
 					}
-					tLog(node, "Indication >> EVENT. Reference: " + ref + ", State: " + state + ", Result: " + result + ", Direction: " + direction, 'INFO');
+					tLog(node, "Indication >> EVENT. Reference: " + ref0 + ", State: " + state + ", Result: " + result + ", Direction: " + direction, 'INFO');
 					break;
 
 				// server conditions
@@ -1915,54 +2102,23 @@ node.warn("DELETE");
 					var rspCode = params["RSP-CODE"];
 					var rspReason = params["RSP-REASON"];
 					var health = params["S-HEALTH"];
-					var hotstby = params["S-HOTSTBY"];
+					var hotstby = normalizeHotStandByValue(params["S-HOTSTBY"]);
 					var load = params["S-LOAD"];
 
-					if(master) {
-						node.hotStandBy_master_active = !(hotstby == 'true');
-					} else {
-						node.hotStandBy_slave_active = !(hotstby == 'true');
-					}
-
-					if(master && node.hotStandBy == 0 && !node.hotStandBy_master_active) {
-						if(node.have_slave == "slave") {
-							node.hotStandBy = 1;
-						}
-					} else if(master && node.hotStandBy == 1 && node.hotStandBy_master_active) {
-						node.hotStandBy = 0;
-					} else if(!master && node.hotStandBy == 1 && !node.hotStandBy_slave_active && !node.hotStandBy_master_active) {
-						tLog(node, "Both DAKS-Servers are in Hot-Standby mode.", 'CRITICAL');
-						node.warn("Both DAKS-Servers are in Hot-Standby mode.");
-					}
-					
-					changeNodeState_Connection(node);
+					setConnectionStandByState(node, (master?0:1), hotstby);
+					refreshActiveConnection(node, node.hotStandBy);
 
 					tLog(node, "Servercondition >> Response-Code: " + rspCode + ", Response-Reason: " + rspReason + ", Server-Health: " + health + ", Hot-Standby: " + hotstby + ", Server-Load: " + load, 'INFO');
 					break;
 
 				case "IND.S-SYSTEM":
 					var health = params["S-HEALTH"];
-					var hotstby = params["S-HOTSTBY"];
+					var hotstby = normalizeHotStandByValue(params["S-HOTSTBY"]);
 					var load = params["S-LOAD"];
 
 
-					if(master) {
-						node.hotStandBy_master_active = !(hotstby == 'true');
-					} else {
-						node.hotStandBy_slave_active = !(hotstby == 'true');
-					}
-
-					if(master && node.hotStandBy == 0 && !node.hotStandBy_master_active) {
-						if(node.have_slave == "slave") {
-							node.hotStandBy = 1;
-						}
-					} else if(master && node.hotStandBy == 1 && node.hotStandBy_master_active) {
-						node.hotStandBy = 0;
-					} else if(!master && node.hotStandBy == 1 && !node.hotStandBy_slave_active && !node.hotStandBy_master_active) {
-						tLog(node, "Both DAKS-Servers are in Hot-Standby mode.", 'CRITICAL');
-						node.warn("Both DAKS-Servers are in Hot-Standby mode.");
-					}
-
+					setConnectionStandByState(node, (master?0:1), hotstby);
+					refreshActiveConnection(node, node.hotStandBy);
 					tLog(node, "Servercondition >> Server-Health: " + health + ", Hot-Standby: " + hotstby + ", Server-Load: " + load, 'INFO');
 					break;
 
@@ -2024,7 +2180,8 @@ node.warn("DELETE");
 				};
 
 				that.sendRequest(invokeID, hrtbXml);
-				heartbeatTimer = setTimeout(onHeartbeatTimeout, 2000);
+				var hbTimeoutMs = Math.max(2000, ((master)?node.timeout_main:node.timeout_slave) * 1000);
+				heartbeatTimer = setTimeout(onHeartbeatTimeout, hbTimeoutMs);
 			}
 		}
 
@@ -2036,6 +2193,9 @@ node.warn("DELETE");
 			tLog(node, "Timeout on heartbeat request!!! - " + config.name, 'ERROR');
 			if(tcpConnection != null) {
 				tcpConnection.destroy();
+			}
+			if(reConnectTimeoutObj == null) {
+				reConnectTimeoutObj = setTimeout(reConnectTimer, reConnectTimeout * 1000);
 			}
 		}
 
@@ -2074,6 +2234,8 @@ node.warn("DELETE");
 			reConnectTimeoutObj = null;
 			clearTimeout(heartbeatTimer);
 			heartbeatTimer = null;
+			clearTimeout(aliveTimer);
+			aliveTimer = null;
 			node.warn("All TCP-Class-Listeners removed...");
 			
 			done();

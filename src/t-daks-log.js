@@ -31,22 +31,24 @@ module.exports = function(RED) {
         this.console = config.console;
 
         var node = this;
+
+        const onLogData = function(msg) {
+            node.send(msg);
+            
+            if(node.console) {
+                if(typeof msg.level === 'undefined') {
+                    msg.level = "INFO";
+                }
+                if(typeof msg.location === 'undefined') {
+                    msg.location = "Node";
+                }
+
+                this.log(msg.location + " [" + msg.level + "]: " + msg.payload);
+            }
+        };
         
         if(this.log) {
-            node.log.addListener('logData', function(msg) {
-                node.send(msg);
-                
-                if(node.console) {
-                    if(typeof msg.level === 'undefined') {
-                        msg.level = "INFO";
-                    }
-                    if(typeof msg.location === 'undefined') {
-                        msg.location = "Node";
-                    }
-
-                    this.log(msg.location + " [" + msg.level + "]: " + msg.payload);
-                }
-            });
+            node.log.addListener('logData', onLogData);
 
         } else {
             node.warn("No Log-Connector defined");
@@ -59,6 +61,9 @@ module.exports = function(RED) {
         });
 
         this.on('close', function(done) {
+            if(node.log) {
+                node.log.removeListener('logData', onLogData);
+            }
             done();
         });
         

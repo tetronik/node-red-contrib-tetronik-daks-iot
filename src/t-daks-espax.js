@@ -32,24 +32,28 @@ module.exports = function(RED) {
 		this.logging = RED.nodes.getNode(config.logging);
 
 		var node = this;
+
+        const onNodeStatus = function(msg) {
+            node.status(msg);
+        };
+
+        const onInitStatus = function(msg) {
+            var parentNode = msg.node;
+			parentNode.status(msg);
+        };
+
+        const onNodeOutput = function(msg) {
+            node.send(msg);
+        };
 		        
         if(this.server) {
 			
 			// get last status
 			this.server.emit('getLastStatus', this);
 
-			this.server.addListener('Nodestatus', function(msg) {
-				node.status(msg);
-            });
-			
-			this.server.addListener('InitNodestatus', function(msg) {
-				var parentNode = msg.node;
-				parentNode.status(msg);
-            });
-            
-            this.server.addListener('Nodeoutput', function(msg) {
-				node.send(msg);
-			});
+			this.server.addListener('Nodestatus', onNodeStatus);
+			this.server.addListener('InitNodestatus', onInitStatus);
+            this.server.addListener('Nodeoutput', onNodeOutput);
 
             try {
                 node.on('input', function(msg) {
@@ -66,7 +70,7 @@ module.exports = function(RED) {
                     msg.again = undefined;
                     msg.used_connection = undefined;
 
-                    if(typeof msg.event_id != undefined && (msg.event_id == "" || msg.event_id == null)) {
+                    if(typeof msg.event_id != 'undefined' && (msg.event_id == "" || msg.event_id === null)) {
                         // ERROR on eventID parameter set but empty or null
                         tLog(node, "A Event-ID was given but it was emtpy. Sent message: " + msg, 'ERROR');
                         return;
@@ -78,33 +82,33 @@ module.exports = function(RED) {
                             node.server.emit('Command', msg);
                         }
                     } else if(typeof msg.espax != 'undefined') {
-                        if(typeof msg.espax.type == undefined || (msg.espax.type != "single" && msg.espax.type != "group" && msg.espax.type != "conference")) {
+                        if(typeof msg.espax.type === 'undefined' || (msg.espax.type != "single" && msg.espax.type != "group" && msg.espax.type != "conference")) {
                             // ERROR on no or wrong ESPA-X command
                             tLog(node, "No or a wrong ESPA-X command was set in the msg->espax tree. Sent message: " + msg, 'ERROR');
                             return;
                         }
 
-                        if(typeof msg.espax.number == undefined) {
+                        if(typeof msg.espax.number === 'undefined') {
                             tLog(node, "Calling number is missing. Sent message: " + msg, 'ERROR');
                             return;
                         }
 						
-						if(typeof msg.espax.conntype == undefined) {
+						if(typeof msg.espax.conntype === 'undefined') {
                             tLog(node, "Connection-Type is missing. Sent message: " + msg, 'ERROR');
                             return;
                         }
 
-                        if(typeof msg.espax.audio_id == undefined) {
+                        if(typeof msg.espax.audio_id === 'undefined') {
                             tLog(node, "Audio ID is missing. Sent message: " + msg, 'ERROR');
                             return;
                         }
 
-                        if(typeof msg.espax.calling_number == undefined) {
-                            msg.espax.calling_number == "";
+                        if(typeof msg.espax.calling_number === 'undefined') {
+                            msg.espax.calling_number = "";
                         }
 
-                        if(typeof msg.espax.calling_name == undefined) {
-                            msg.espax.calling_name == "";
+                        if(typeof msg.espax.calling_name === 'undefined') {
+                            msg.espax.calling_name = "";
                         }
 
                         if(typeof msg.espax.message != 'undefined') {
@@ -113,7 +117,7 @@ module.exports = function(RED) {
                                 tLog(node, "The message was too long. It is now shortened to 250 characters. Original message: " + msg.espax.message, 'WARNING');
                             }
                         } else {
-                            msg.espax.message == "";
+                            msg.espax.message = "";
                         }
 
                         if(typeof msg.espax.ward != 'undefined') {
@@ -122,7 +126,7 @@ module.exports = function(RED) {
                                 tLog(node, "The ward string was too long. It is now shortened to 12 characters. Original message: " + msg.espax.ward, 'WARNING');
                             }
                         } else {
-                            msg.espax.ward == "";
+                            msg.espax.ward = "";
                         }
 
                         if(typeof msg.espax.bed != 'undefined') {
@@ -131,19 +135,19 @@ module.exports = function(RED) {
                                 tLog(node, "The bed string was too long. It is now shortened to 12 characters. Original message: " + msg.espax.bed, 'WARNING');
                             }
                         } else {
-                            msg.espax.bed == "";
+                            msg.espax.bed = "";
                         }
 
-                        if(typeof msg.espax.signal == undefined || (msg.espax.signal != "Standard" && msg.espax.signal != "Urgent" && msg.espax.signal != "Emergency" && msg.espax.signal != "Special")) {
-                            msg.espax.signal == "Standard";
+                        if(typeof msg.espax.signal === 'undefined' || (msg.espax.signal != "Standard" && msg.espax.signal != "Urgent" && msg.espax.signal != "Emergency" && msg.espax.signal != "Special")) {
+                            msg.espax.signal = "Standard";
                         }
 
-                        if(typeof msg.espax.callback == undefined || (msg.espax.callback != "No" && msg.espax.callback != "NC-IF" && msg.espax.callback != "NC-IF-DTMF" && msg.espax.callback != "NC-IF-DTHRU" && msg.espax.callback != "NC-IF-PREP" && msg.espax.callback != "Phone" && msg.espax.callback != "Phone-VC")) {
-                            msg.espax.callback == "";
+                        if(typeof msg.espax.callback === 'undefined' || (msg.espax.callback != "No" && msg.espax.callback != "NC-IF" && msg.espax.callback != "NC-IF-DTMF" && msg.espax.callback != "NC-IF-DTHRU" && msg.espax.callback != "NC-IF-PREP" && msg.espax.callback != "Phone" && msg.espax.callback != "Phone-VC")) {
+                            msg.espax.callback = "";
                         }
 
                         if(typeof msg.espax.delay == 'undefined' || msg.espax.delay < 0) {
-                            msg.espax.delay == 0;
+                            msg.espax.delay = 0;
                         } else if(msg.espax.delay > 65535) {
                             msg.espax.delay = 65535
                         }
@@ -154,8 +158,8 @@ module.exports = function(RED) {
                             msg.espax.attempts = 65535
                         }
 
-                        if(typeof msg.espax.prio == undefined || (msg.espax.prio != "Emergency" && msg.espax.prio != "High" && msg.espax.prio != "Medium" && msg.espax.prio != "Standard" && msg.espax.prio != "Low")) {
-                            msg.espax.prio == "Standard";
+                        if(typeof msg.espax.prio === 'undefined' || (msg.espax.prio != "Emergency" && msg.espax.prio != "High" && msg.espax.prio != "Medium" && msg.espax.prio != "Standard" && msg.espax.prio != "Low")) {
+                            msg.espax.prio = "Standard";
                         }
 
                         if(typeof msg.espax.ncifno != 'undefined') {
@@ -164,15 +168,15 @@ module.exports = function(RED) {
                                 tLog(node, "The ncifno string was too long. It is now shortened to 24 characters. Original message: " + msg.espax.ncifno, 'WARNING');
                             }
                         } else {
-                            msg.espax.ncifno == "";
+                            msg.espax.ncifno = "";
                         }
 
-                        if(typeof msg.espax.cbckno == undefined) {
-                            msg.espax.cbckno == "";
+                        if(typeof msg.espax.cbckno === 'undefined') {
+                            msg.espax.cbckno = "";
                         }
 
-                        if(typeof msg.espax.pr_details == undefined || (msg.espax.pr_details != "No" && msg.espax.pr_details != "Process" && msg.espax.pr_details != "Results" && msg.espax.pr_details != "All")) {
-                            msg.espax.pr_details == "All";
+                        if(typeof msg.espax.pr_details === 'undefined' || (msg.espax.pr_details != "No" && msg.espax.pr_details != "Process" && msg.espax.pr_details != "Results" && msg.espax.pr_details != "All")) {
+                            msg.espax.pr_details = "All";
                         }
                         
 
@@ -188,6 +192,11 @@ module.exports = function(RED) {
             }
 
             this.on('close', function(done) {
+                if(node.server) {
+                    node.server.removeListener('Nodestatus', onNodeStatus);
+                    node.server.removeListener('InitNodestatus', onInitStatus);
+                    node.server.removeListener('Nodeoutput', onNodeOutput);
+                }
                 done();
             });
         } else {

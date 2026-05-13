@@ -93,7 +93,7 @@ npm show node-red-contrib-tetronik-daks-iot@* version
 Then install a special version with @M.M.P: (i.e.)
 
 ```
-npm install node-red-contrib-tetronik-daks-iot@1.0.0
+npm install node-red-contrib-tetronik-daks-iot@1.1.1
 ```
 
 ## SECURITY
@@ -170,27 +170,31 @@ If you want to "catch" third-party events, to process them with the same log flo
 
 | Package Name                        | Version | Information             | Certification status   |
 |-------------------------------------|:-------:|-------------------------|:----------------------:|
-| node-red                            | 1.2.2   |                         | :white_check_mark:     |
-| node-red-contrib-bacnet             | 0.2.4   | still in Beta           | :b:                    |
+| node-red                            | 4.1.4   |                         | :white_check_mark:     |
+| node-red-contrib-bacnet             | 0.3.0   | still in Beta           | :b:                    |
 | node-red-contrib-bool-gate          | 1.0.2   |                         | :white_check_mark:     |
-| node-red-contrib-calc               | 1.0.5   |                         | :white_check_mark:     |
-| node-red-contrib-cron-plus          | 1.3.0   |                         | :white_check_mark:     |
+| node-red-contrib-buffer-parser      | 3.2.2   |                         | :white_check_mark:     |
+| node-red-contrib-calc               | 1.0.6   |                         | :white_check_mark:     |
+| node-red-contrib-cron-plus          | 2.2.4   |                         | :white_check_mark:     |
 | node-red-contrib-german-holidays    | 1.0.1   | separate evaluation     | :white_check_mark:     |
 | node-red-contrib-holiday            | 1.0.0   |                         | :white_check_mark:     |
-| node-red-contrib-influxdb           | 0.5.1   |                         | :white_check_mark:     |
+| node-red-contrib-influxdb           | 0.7.0   |                         | :white_check_mark:     |
 | node-red-contrib-input-split        | 0.1.0   |                         | :white_check_mark:     |
-| node-red-contrib-knx-ultimate       | 1.1.92  | in evaluation           | :small_orange_diamond: |
-| node-red-contrib-light-scheduler    | 0.0.16  |                         | :white_check_mark:     |
-| node-red-contrib-matrixbot          | 0.0.2   |                         | :white_check_mark:     |
-| node-red-contrib-modbus             | 5.13.3  | only Modbus-Read tested | :small_blue_diamond:   |
-| node-red-contrib-mssql-plus         | 0.5.1   | in evaluation           | :small_orange_diamond: |
-| node-red-contrib-nodemailer-adapter | 1.0.0   |                         | :white_check_mark:     |
-| node-red-contrib-opcua              | 0.2.88  | for professionals only  | :white_check_mark:     |
-| node-red-contrib-ring-central       | 0.0.4   | SMS only                | :small_blue_diamond:   |
+| node-red-contrib-knx-ultimate       | 4.3.15  | in evaluation           | :small_orange_diamond: |
+| node-red-contrib-light-scheduler    | 0.0.19  |                         | :white_check_mark:     |
+| node-red-contrib-matrixbot          | 0.0.3   |                         | :white_check_mark:     |
+| node-red-contrib-modbus             | 5.54.2  | only Modbus-Read tested | :small_blue_diamond:   |
+| node-red-contrib-mssql-plus         | 0.13.1  | in evaluation           | :small_orange_diamond: |
+| node-red-contrib-nodemailer-adapter | 1.0.0   | end of life             | :white_check_mark:     |
+| node-red-node-email                 | 5.2.3   | in evaluation           | :white_check_mark:     |
+| node-red-contrib-opcua              | 0.2.351 | for professionals only  | :white_check_mark:     |
+| node-red-contrib-ring-central       | 0.0.6   | SMS only                | :small_blue_diamond:   |
 | node-red-contrib-syslog             | 1.1.0   |                         | :white_check_mark:     |
 | node-red-contrib-timeframerlt       | 0.3.1   |                         | :white_check_mark:     |
-| node-red-contrib-ui-led             | 0.3.3   |                         | :white_check_mark:     |
-| node-red-dashboard                  | 2.23.4  |                         | :white_check_mark:     |
-| node-red-node-mysql                 | 0.1.1   |                         | :white_check_mark:     |
-| node-red-node-ping                  | 0.2.1   |                         | :white_check_mark:     |
-| node-red-node-snmp                  | 0.0.25  | V1 and V2c only         | :white_check_mark:     |
+| node-red-contrib-ui-led             | 0.4.11  |                         | :white_check_mark:     |
+| node-red-dashboard                  | 3.6.6   | end of life             | :white_check_mark:     |
+| @flowfuse/node-red-dashboard        | 1.30.2  |                         | :white_check_mark:     |
+| node-red-node-mysql                 | 3.0.0   |                         | :white_check_mark:     |
+| node-red-node-ping                  | 0.3.3   |                         | :white_check_mark:     |
+| node-red-node-serialport            | 2.0.3   |                         | :white_check_mark:     |
+| node-red-node-snmp                  | 2.1.0   | V1, V2c and V3          | :white_check_mark:     |
