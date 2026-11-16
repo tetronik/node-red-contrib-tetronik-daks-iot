@@ -30,14 +30,12 @@ module.exports = function(RED) {
 
         var node = this;
 
-        const onGetId =  function(msg) {
+        if(this.eventItem) {
+            this.eventItem.addListener('GetID', function(msg) {
                 if(msg.req_id == config.id) {
                     node.send(msg);
                 }
-            };
-
-        if(this.eventItem) {
-            this.eventItem.addListener('GetID',onGetId);
+            });
         
             node.on('input', function(msg) {
                 msg.req_id = config.id;
@@ -46,9 +44,6 @@ module.exports = function(RED) {
         }
 
         this.on('close', function(done) {
-            if(node.eventItem) {
-                node.eventItem.removeListener('GetID', onGetId);
-            }
             done();
         });
         

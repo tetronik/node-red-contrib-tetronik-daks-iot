@@ -1,0 +1,20 @@
+{
+  "t-daks-espax-server": {
+    "option": {
+      "noInput": "Keine Eingabe (auflegen)",
+      "off": "Aus"
+    },
+    "satellite": {
+      "extendedStatus": "Erweiterter Status",
+      "hashDisconnects": "# beendet Gespräch",
+      "hashEvaluation": "# auswerten",
+      "keyNote": "Taste merken",
+      "keyPrioritize": "Taste priorisieren",
+      "keyStop": "Taste beenden",
+      "keypadEcho": "Tastaturecho",
+      "oneDisconnects": "1 beendet Gespräch",
+      "oneEvaluation": "1 auswerten",
+      "title": "ESPA4.4.4- / ESPA-X-Parameter"
+    }
+  }
+}

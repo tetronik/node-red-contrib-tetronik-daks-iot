@@ -43,6 +43,10 @@ module.exports = function(RED) {
                     } else {
                         output.state = msg.payload.state;
                     }
+                    // Preserve the complete correlation ID from the ESPA-X
+                    // response. In particular `custom[0]` may hold the
+                    // calling flow's request identifier.
+                    output.event_id = msg.payload.event_id;
                     output.result = msg.payload.result;
                     if(this.confirmation == true) {
                         if(output.result == "Positive confirmed" || output.result == "Negative confirmed") {

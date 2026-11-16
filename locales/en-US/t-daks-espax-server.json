@@ -1,0 +1,20 @@
+{
+  "t-daks-espax-server": {
+    "option": {
+      "noInput": "No input (hang up)",
+      "off": "Off"
+    },
+    "satellite": {
+      "extendedStatus": "Extended status",
+      "hashDisconnects": "# disconnects",
+      "hashEvaluation": "# evaluation",
+      "keyNote": "Key note",
+      "keyPrioritize": "Key prioritize",
+      "keyStop": "Key stop",
+      "keypadEcho": "Keypad echo",
+      "oneDisconnects": "1 disconnects",
+      "oneEvaluation": "1 evaluation",
+      "title": "ESPA4.4.4 / ESPA-X parameters"
+    }
+  }
+}

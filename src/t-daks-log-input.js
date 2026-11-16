@@ -50,8 +50,11 @@ module.exports = function(RED) {
             }
 
             if(this.level_S != "t") {
-                const level = (msg.level || "INFO").toString().toUpperCase();
-                out.level = ["INFO","WARNING","ERROR","CRITICAL","ALARM"].includes(level) ? level : "INFO";
+                out.level = msg.level.toUpperCase();
+                if(out.level != "INFO" && out.level != "WARNING" && out.level != "ERROR" && out.level != "CRITICAL" && out.level != "ALARM") {
+                    node.warn("The recieved \"Log-Level\" is not valid. The level changed to default: INFO.", 'WARNING');
+                    out.level = "INFO";
+                }
             } else {
                 out.level = this.level;
             }
@@ -62,11 +65,7 @@ module.exports = function(RED) {
                 out.location = this.location;
             }
 
-            if(node.log) {
-                node.log.emit('getData', out);
-            } else {
-                node.warn("No Log-Connector defined");
-            }
+            node.log.emit('getData', out);
 
         });
 

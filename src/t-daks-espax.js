@@ -70,9 +70,15 @@ module.exports = function(RED) {
                     msg.again = undefined;
                     msg.used_connection = undefined;
 
-                    if(typeof msg.event_id != 'undefined' && (msg.event_id == "" || msg.event_id === null)) {
-                        // ERROR on eventID parameter set but empty or null
-                        tLog(node, "A Event-ID was given but it was emtpy. Sent message: " + msg, 'ERROR');
+                    var eventIdWasProvided = typeof msg.event_id !== "undefined";
+                    var eventIdIsEmpty = msg.event_id === null ||
+                        typeof msg.event_id === "string" && msg.event_id.trim() === "";
+
+                    if(eventIdWasProvided && eventIdIsEmpty) {
+                        // A missing Event-ID is valid for messages such as
+                        // uESPA-X I/O indications. Reject only an ID that was
+                        // explicitly supplied as null or an empty string.
+                        tLog(node, "An Event-ID was given, but it was empty. Sent message: " + JSON.stringify(msg), 'ERROR');
                         return;
                     }
 
@@ -81,6 +87,17 @@ module.exports = function(RED) {
                             // send MSG to SERVER NODE
                             node.server.emit('Command', msg);
                         }
+                    } else if(msg.uespaxIoBlocked && typeof msg.uespaxIoBlocked === 'object') {
+                        // The contacts node detected an Inputinator IOG
+                        // configuration error. Do not retain or replay an
+                        // otherwise valid but now stale contact snapshot.
+                        node.server.emit('UespaxInputStatusBlocked', msg.uespaxIoBlocked);
+                    } else if(msg.uespaxIo && typeof msg.uespaxIo === 'object') {
+                        // The uESPA-X configuration node forwards the JSON
+                        // payload to WebConfiguration, which creates the
+                        // proprietary IND.C-STATUSIN XML for the active
+                        // uESPA-X connection.
+                        node.server.emit('UespaxInputStatus', msg.uespaxIo);
                     } else if(typeof msg.espax != 'undefined') {
                         if(typeof msg.espax.type === 'undefined' || (msg.espax.type != "single" && msg.espax.type != "group" && msg.espax.type != "conference")) {
                             // ERROR on no or wrong ESPA-X command

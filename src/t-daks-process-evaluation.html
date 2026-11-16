@@ -62,6 +62,9 @@
 	<h3>Outputs</h3>
 	<ol class="node-ports">
 		<dl class="message-properties">
+			<dt>event_id <span class="property-type">string | object</span></dt>
+			<dd>The complete Event-ID of the original request, including <code>event_id.custom</code> when configured.</dd>
+
 			<dt>endReason <span class="property-type">string</span></dt>
 			<dd>On group calls for every participant:<br>
 			<i>None, Off duty, Busy, No answer, Not reached, Wrong behaviour, Reached, Accepted, Rejected, Conversation, Positive, Negative, Positive confirmed, Negative confirmed</i></dd>

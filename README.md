@@ -45,7 +45,7 @@
 * local network connection *(mandatory for this service)*
 * internet connection *(only required for package installation/update)*
 * Ports **2023** *(ESPA-X)* and/or **2024** *(ESPA-X TLS)* not blocked<br>*(if you changed those default ports in the DAKS, these "new" ports must not be blocked)*
-* NodeRED >V2.0.0 installed
+* NodeRED >=2.0.0 installed
 * dependencies *(see `package.json`)* installed
 
 ## Installation
@@ -93,7 +93,7 @@ npm show node-red-contrib-tetronik-daks-iot@* version
 Then install a special version with @M.M.P: (i.e.)
 
 ```
-npm install node-red-contrib-tetronik-daks-iot@1.1.1
+npm install node-red-contrib-tetronik-daks-iot@1.2.0
 ```
 
 ## SECURITY
@@ -170,7 +170,7 @@ If you want to "catch" third-party events, to process them with the same log flo
 
 | Package Name                        | Version | Information             | Certification status   |
 |-------------------------------------|:-------:|-------------------------|:----------------------:|
-| node-red                            | 4.1.4   |                         | :white_check_mark:     |
+| node-red                            | >=2.0.0 | minimum required        | :white_check_mark:     |
 | node-red-contrib-bacnet             | 0.3.0   | still in Beta           | :b:                    |
 | node-red-contrib-bool-gate          | 1.0.2   |                         | :white_check_mark:     |
 | node-red-contrib-buffer-parser      | 3.2.2   |                         | :white_check_mark:     |

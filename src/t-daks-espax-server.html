@@ -24,6 +24,16 @@
 			max_queuesize: {value: 1000, required: true, validate: RED.validators.regex(/^([1-9][0-9]{1,3}|10000)$/)},
 			queuesize_warning: {value: 80, required: true, validate: RED.validators.regex(/^([1-9][0-9]{1,2}|100)$/)},
 			logging: {type:"t-daks log-connector"},
+			use_uespax: {value: false},
+			keypad_echo: {value: false},
+			extended_status: {value: false},
+			one_evaluation: {value: false},
+			one_disconnects: {value: false},
+			hash_evaluation: {value: false},
+			hash_disconnects: {value: false},
+			key_prioritize: {value: "off"},
+			key_note: {value: "off"},
+			key_stop: {value: "off"},
 
 			name_main: {value:"Master",required:true},
 			host_main: {value:"127.0.0.1",required:true,validate: RED.validators.regex(/^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/)},
@@ -53,6 +63,121 @@
 		exportable: false,
 
 		oneditprepare: function() {
+			var currentConfigId = this.id;
+			var currentConfigHadUespax = this.use_uespax === true || this.use_uespax === "true";
+			var uespaxStatus = null;
+
+			function updateSatelliteParameterVisibility() {
+				var enabled = $("#node-config-input-use_uespax").is(":checked");
+				$("#node-row-satellite-parameters").toggle(enabled);
+				$("#node-row-satellite-extended").toggle(enabled && $("#node-config-input-extended_status").is(":checked"));
+				$("#node-row-satellite-one-disconnects").toggle(enabled && $("#node-config-input-extended_status").is(":checked") && $("#node-config-input-one_evaluation").is(":checked"));
+				$("#node-row-satellite-hash-disconnects").toggle(enabled && $("#node-config-input-extended_status").is(":checked") && $("#node-config-input-hash_evaluation").is(":checked"));
+			}
+
+			function updateConversationKeyOptions() {
+				var ids = ["key_prioritize", "key_note", "key_stop"];
+
+				ids.forEach(function(id) {
+					var select = $("#node-config-input-" + id);
+					var usedByOther = ids
+						.filter(function(otherId) { return otherId !== id; })
+						.map(function(otherId) { return $("#node-config-input-" + otherId).val(); })
+						.filter(function(value) { return value && value !== "off"; });
+
+					select.find("option").each(function() {
+						var option = $(this);
+						option.prop("disabled", option.val() !== "off" && usedByOther.indexOf(option.val()) >= 0);
+					});
+				});
+			}
+
+			function countOtherConfiguredUespax() {
+				var count = 0;
+
+				RED.nodes.eachConfig(function(configNode) {
+					if(
+						configNode.type === "t-daks espax-server" &&
+						configNode.id !== currentConfigId &&
+						(configNode.use_uespax === true || configNode.use_uespax === "true")
+					) {
+						count += 1;
+					}
+				});
+
+				return count;
+			}
+
+			function updateUespaxAvailability() {
+				var checkbox = $("#node-config-input-use_uespax");
+				var hint = $("#node-config-input-use_uespax-hint");
+				var otherConfigured = countOtherConfiguredUespax();
+
+				checkbox.prop("disabled", false);
+
+				if(!uespaxStatus) {
+					hint.text("Checking uESPA-X license availability...");
+					return;
+				}
+
+				if(!uespaxStatus.enabled) {
+					checkbox.prop("checked", false);
+					checkbox.prop("disabled", true);
+					hint.text(uespaxStatus.reason || "uESPA-X is not enabled by the installed license.");
+					return;
+				}
+
+				if(uespaxStatus.maxConnections === -1) {
+					hint.text("uESPA-X is licensed without a connection limit.");
+					return;
+				}
+
+				var freeByConfiguration = uespaxStatus.maxConnections - otherConfigured;
+
+				if(freeByConfiguration <= 0 && !currentConfigHadUespax) {
+					checkbox.prop("checked", false);
+					checkbox.prop("disabled", true);
+					hint.text("No uESPA-X license slot is free. Disable uESPA-X on another ESPA-X connector first.");
+					return;
+				}
+
+				if(currentConfigHadUespax) {
+					if(otherConfigured >= uespaxStatus.maxConnections) {
+						hint.text("The configured uESPA-X connectors exceed the license limit. Disable uESPA-X here or on another ESPA-X connector.");
+						return;
+					}
+
+					hint.text("uESPA-X is enabled for this connector. All other configured uESPA-X connectors count against the license limit.");
+					return;
+				}
+
+				hint.text("uESPA-X license slots free: " + Math.max(0, freeByConfiguration) + " of " + uespaxStatus.maxConnections + ".");
+			}
+
+			$.getJSON("tetronik-daks-iot/uespax-license")
+				.done(function(status) {
+					uespaxStatus = status;
+					updateUespaxAvailability();
+				})
+				.fail(function() {
+					uespaxStatus = {
+						enabled: false,
+						reason: "uESPA-X license status cannot be read from the local WebConfiguration service."
+					};
+					updateUespaxAvailability();
+				});
+
+			$("#node-config-input-use_uespax").change(function() {
+				currentConfigHadUespax = this.checked;
+				updateUespaxAvailability();
+				updateSatelliteParameterVisibility();
+			});
+
+			$("#node-config-input-extended_status, #node-config-input-one_evaluation, #node-config-input-hash_evaluation").change(updateSatelliteParameterVisibility);
+			$("#node-config-input-key_prioritize, #node-config-input-key_note, #node-config-input-key_stop").change(updateConversationKeyOptions);
+			updateSatelliteParameterVisibility();
+			updateConversationKeyOptions();
+
 			$("#node-config-input-have_slave").change(function() {
 				var val = $(this).val();
 				if(val === "slave") {
@@ -112,6 +237,70 @@
 	<div class="form-row">
 		<label for="node-config-input-logging"><i class="icon-file"></i> Log-Connector</label>
 		<input type="text" id="node-config-input-logging">
+	</div>
+	<div class="form-row">
+        <label for="node-config-input-use_uespax"><i class="icon-tag"></i> Use uESPA-X</label>
+		<input type="checkbox" id="node-config-input-use_uespax">
+		<div class="form-tips" id="node-config-input-use_uespax-hint" style="margin-top: 6px;">
+			Requires the local WebConfiguration uESPA-X service and an installed license with uESPAX enabled.
+			If unavailable, the connector does not fall back to legacy ESPA-X.
+		</div>
+	</div>
+	<div id="node-row-satellite-parameters" class="form-row" style="display: none;">
+		<h3 data-i18n="t-daks-espax-server.satellite.title">ESPA4.4.4 / ESPA-X parameters</h3>
+		<div class="form-row">
+			<label for="node-config-input-keypad_echo" data-i18n="t-daks-espax-server.satellite.keypadEcho">Keypad echo</label>
+			<input type="checkbox" id="node-config-input-keypad_echo">
+		</div>
+		<div class="form-row">
+			<label for="node-config-input-extended_status" data-i18n="t-daks-espax-server.satellite.extendedStatus">Extended status</label>
+			<input type="checkbox" id="node-config-input-extended_status">
+		</div>
+		<div id="node-row-satellite-extended">
+			<div class="form-row">
+				<label for="node-config-input-one_evaluation" data-i18n="t-daks-espax-server.satellite.oneEvaluation">1 evaluation</label>
+				<input type="checkbox" id="node-config-input-one_evaluation">
+			</div>
+			<div id="node-row-satellite-one-disconnects" class="form-row">
+				<label for="node-config-input-one_disconnects" data-i18n="t-daks-espax-server.satellite.oneDisconnects">1 disconnects</label>
+				<input type="checkbox" id="node-config-input-one_disconnects">
+			</div>
+			<div class="form-row">
+				<label for="node-config-input-hash_evaluation" data-i18n="t-daks-espax-server.satellite.hashEvaluation"># evaluation</label>
+				<input type="checkbox" id="node-config-input-hash_evaluation">
+			</div>
+			<div id="node-row-satellite-hash-disconnects" class="form-row">
+				<label for="node-config-input-hash_disconnects" data-i18n="t-daks-espax-server.satellite.hashDisconnects"># disconnects</label>
+				<input type="checkbox" id="node-config-input-hash_disconnects">
+			</div>
+			<div class="form-row">
+				<label for="node-config-input-key_prioritize" data-i18n="t-daks-espax-server.satellite.keyPrioritize">Key prioritize</label>
+				<select id="node-config-input-key_prioritize">
+					<option value="off" data-i18n="t-daks-espax-server.option.off">Off</option>
+					<option value="1">1</option>
+					<option value="#">#</option>
+					<option value="no-input" data-i18n="t-daks-espax-server.option.noInput">No input (hang up)</option>
+				</select>
+			</div>
+			<div class="form-row">
+				<label for="node-config-input-key_note" data-i18n="t-daks-espax-server.satellite.keyNote">Key note</label>
+				<select id="node-config-input-key_note">
+					<option value="off" data-i18n="t-daks-espax-server.option.off">Off</option>
+					<option value="1">1</option>
+					<option value="#">#</option>
+					<option value="no-input" data-i18n="t-daks-espax-server.option.noInput">No input (hang up)</option>
+				</select>
+			</div>
+			<div class="form-row">
+				<label for="node-config-input-key_stop" data-i18n="t-daks-espax-server.satellite.keyStop">Key stop</label>
+				<select id="node-config-input-key_stop">
+					<option value="off" data-i18n="t-daks-espax-server.option.off">Off</option>
+					<option value="1">1</option>
+					<option value="#">#</option>
+					<option value="no-input" data-i18n="t-daks-espax-server.option.noInput">No input (hang up)</option>
+				</select>
+			</div>
+		</div>
 	</div>
 	
 	<h3>Master-Server</h3>
